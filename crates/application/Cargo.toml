@@ -1,0 +1,13 @@
+[package]
+name = "pm-application"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow.workspace = true
+chrono.workspace = true
+pm-domain = { path = "../domain" }
+pm-ports = { path = "../ports" }
+serde.workspace = true
+thiserror.workspace = true
+uuid.workspace = true

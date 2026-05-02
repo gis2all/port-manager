@@ -1,0 +1,7 @@
+[package]
+name = "pm-cli"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+pm-cli-api = { path = "../../crates/interfaces/cli_api" }
