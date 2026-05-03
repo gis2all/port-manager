@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use uuid::Uuid;
+use crate::ManagedServiceId;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum PortProtocol {
@@ -23,5 +23,5 @@ pub struct PortRecord {
     pub pid: Option<u32>,
     pub process_name: Option<String>,
     pub status: PortStatus,
-    pub matched_service_id: Option<Uuid>,
+    pub matched_service_id: Option<ManagedServiceId>,
 }

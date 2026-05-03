@@ -1,6 +1,6 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use uuid::Uuid;
+use crate::ManagedServiceId;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum ServiceRunStatus {
@@ -19,7 +19,7 @@ pub enum RunOwnership {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ManagedServiceRun {
-    pub service_id: Uuid,
+    pub service_id: ManagedServiceId,
     pub status: ServiceRunStatus,
     pub root_pid: Option<u32>,
     pub child_pids: Vec<u32>,

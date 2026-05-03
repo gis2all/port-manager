@@ -1,11 +1,11 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use uuid::Uuid;
+use crate::ManagedServiceId;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum FavoriteTarget {
     Port(u16),
-    Service(Uuid),
+    Service(ManagedServiceId),
 }
 
 impl FavoriteTarget {
