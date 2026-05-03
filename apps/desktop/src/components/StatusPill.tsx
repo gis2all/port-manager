@@ -1,4 +1,4 @@
-type StatusTone = "neutral" | "success" | "warning" | "danger" | "accent";
+export type StatusTone = "neutral" | "success" | "warning" | "danger" | "accent";
 
 interface StatusPillProps {
   label: string;
