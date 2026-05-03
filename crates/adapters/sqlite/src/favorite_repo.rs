@@ -15,6 +15,10 @@ impl SqliteStore {
             db: Db::open(":memory:")?,
         })
     }
+
+    pub fn open(path: &str) -> Result<Self> {
+        Ok(Self { db: Db::open(path)? })
+    }
 }
 
 #[async_trait]

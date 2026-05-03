@@ -11,3 +11,7 @@ pm-ports = { path = "../ports" }
 serde.workspace = true
 thiserror.workspace = true
 uuid.workspace = true
+
+[dev-dependencies]
+async-trait.workspace = true
+tokio.workspace = true

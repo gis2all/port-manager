@@ -2,11 +2,14 @@ use crate::dto::{DashboardSnapshotDto, ManagedServiceDto, PortDto};
 use crate::errors::ApplicationError;
 use anyhow::Result;
 use pm_domain::{Favorite, FavoriteTarget, ManagedService, PortProtocol, PortRecord, PortStatus, ServiceKind};
+use pm_ports::ProcessController;
+use std::sync::Arc;
 
 pub struct PortManagerService {
     ports: Vec<PortRecord>,
     services: Vec<ManagedService>,
     favorites: Vec<Favorite>,
+    process_controller: Option<Arc<dyn ProcessController>>,
 }
 
 impl PortManagerService {
@@ -19,6 +22,21 @@ impl PortManagerService {
             ports,
             services,
             favorites,
+            process_controller: None,
+        }
+    }
+
+    pub fn new_for_tests_with_process_controller(
+        ports: Vec<PortRecord>,
+        services: Vec<ManagedService>,
+        favorites: Vec<Favorite>,
+        process_controller: Arc<dyn ProcessController>,
+    ) -> Self {
+        Self {
+            ports,
+            services,
+            favorites,
+            process_controller: Some(process_controller),
         }
     }
 
@@ -70,11 +88,27 @@ impl PortManagerService {
         Ok(DashboardSnapshotDto { ports, services })
     }
 
-    pub fn kill_process_by_port(&self, port: u16) -> std::result::Result<u32, ApplicationError> {
-        self.ports
+    pub async fn kill_process_by_port(
+        &self,
+        port: u16,
+    ) -> std::result::Result<u32, ApplicationError> {
+        let pid = self
+            .ports
             .iter()
             .find(|record| record.port == port)
             .and_then(|record| record.pid)
-            .ok_or(ApplicationError::PortOwnerMissing(port))
+            .ok_or(ApplicationError::PortOwnerMissing(port))?;
+
+        let process_controller = self
+            .process_controller
+            .as_ref()
+            .ok_or(ApplicationError::ProcessControllerUnavailable)?;
+
+        process_controller
+            .kill_pid(pid)
+            .await
+            .map_err(|error| ApplicationError::ProcessControlFailed(error.to_string()))?;
+
+        Ok(pid)
     }
 }
