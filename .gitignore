@@ -1,11 +1,16 @@
 /target
-/node_modules
+**/node_modules
 /apps/desktop/dist
 /apps/desktop/src-tauri/target
 /apps/desktop/src-tauri/gen
 /.superpowers
 /.idea
 /.vscode
+/.playwright-mcp
+/docs
+desktop-shot*.png
+edge-*.png
+/apps/desktop/pw-browser*.png
 *.db
 *.db-shm
 *.db-wal

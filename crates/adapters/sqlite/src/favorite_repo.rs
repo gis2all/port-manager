@@ -3,6 +3,7 @@ use anyhow::Result;
 use async_trait::async_trait;
 use pm_domain::{Favorite, FavoriteTarget};
 use pm_ports::FavoriteRepository;
+use std::path::Path;
 
 #[derive(Clone)]
 pub struct SqliteStore {
@@ -16,7 +17,7 @@ impl SqliteStore {
         })
     }
 
-    pub fn open(path: &str) -> Result<Self> {
+    pub fn open(path: impl AsRef<Path>) -> Result<Self> {
         Ok(Self { db: Db::open(path)? })
     }
 }

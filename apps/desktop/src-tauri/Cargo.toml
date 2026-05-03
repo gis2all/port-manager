@@ -1,0 +1,14 @@
+[package]
+name = "port-manager-desktop"
+version = "0.1.0"
+edition = "2024"
+build = "build.rs"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+pm-application = { path = "../../../crates/application" }
+pm-tauri-api = { path = "../../../crates/interfaces/tauri_api" }
+tauri.workspace = true
+uuid.workspace = true

@@ -11,7 +11,9 @@ pub trait FavoriteRepository: Send + Sync {
 #[async_trait]
 pub trait ManagedServiceRepository: Send + Sync {
     async fn list(&self) -> anyhow::Result<Vec<ManagedService>>;
+    async fn get(&self, id: ManagedServiceId) -> anyhow::Result<Option<ManagedService>>;
     async fn save(&self, service: ManagedService) -> anyhow::Result<()>;
+    async fn delete(&self, id: ManagedServiceId) -> anyhow::Result<()>;
 }
 
 #[async_trait]

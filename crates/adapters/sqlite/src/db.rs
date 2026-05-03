@@ -1,5 +1,6 @@
 use anyhow::Result;
 use rusqlite::Connection;
+use std::path::Path;
 use std::sync::{Arc, Mutex};
 
 #[derive(Clone)]
@@ -8,8 +9,9 @@ pub struct Db {
 }
 
 impl Db {
-    pub fn open(path: &str) -> Result<Self> {
-        let connection = if path == ":memory:" {
+    pub fn open(path: impl AsRef<Path>) -> Result<Self> {
+        let path = path.as_ref();
+        let connection = if path == Path::new(":memory:") {
             Connection::open_in_memory()?
         } else {
             Connection::open(path)?

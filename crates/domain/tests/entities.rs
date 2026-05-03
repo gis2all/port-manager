@@ -1,12 +1,5 @@
-use pm_domain::{
-    Favorite,
-    FavoriteTarget,
-    ManagedService,
-    PortProtocol,
-    PortRecord,
-    PortStatus,
-    ServiceKind,
-};
+use pm_domain::{Favorite, FavoriteTarget, ManagedService, PortProtocol, PortRecord, PortStatus,
+                ServiceKind};
 
 #[test]
 fn command_service_reports_expected_ports() {

@@ -4,4 +4,12 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+anyhow.workspace = true
+pm-adapters-runner = { path = "../../adapters/runner" }
+pm-adapters-sqlite = { path = "../../adapters/sqlite" }
+pm-adapters-windows = { path = "../../adapters/windows" }
 pm-application = { path = "../../application" }
+pm-domain = { path = "../../domain" }
+serde.workspace = true
+tauri.workspace = true
+uuid.workspace = true

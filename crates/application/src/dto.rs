@@ -19,6 +19,22 @@ pub struct ManagedServiceDto {
     pub id: Uuid,
     pub name: String,
     pub kind: String,
+    pub service_name: Option<String>,
+    pub workdir: Option<String>,
+    pub start_command: Option<String>,
+    pub expected_ports: Vec<u16>,
+    pub observed_ports: Vec<u16>,
+    pub status: String,
+    pub is_favorite: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct ManagedServiceDraftDto {
+    pub name: String,
+    pub kind: String,
+    pub service_name: Option<String>,
+    pub workdir: Option<String>,
+    pub start_command: Option<String>,
     pub expected_ports: Vec<u16>,
 }
 

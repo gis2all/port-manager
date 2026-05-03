@@ -4,5 +4,11 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+anyhow.workspace = true
+async-trait.workspace = true
 pm-domain = { path = "../../domain" }
 pm-ports = { path = "../../ports" }
+regex.workspace = true
+serde_json.workspace = true
+tempfile.workspace = true
+tokio.workspace = true

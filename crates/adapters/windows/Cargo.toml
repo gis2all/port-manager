@@ -4,5 +4,12 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+anyhow.workspace = true
+async-trait.workspace = true
+netstat2.workspace = true
 pm-domain = { path = "../../domain" }
 pm-ports = { path = "../../ports" }
+sysinfo.workspace = true
+
+[target.'cfg(windows)'.dependencies]
+windows-service = "0.7"

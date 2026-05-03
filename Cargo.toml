@@ -9,6 +9,7 @@ members = [
   "crates/interfaces/cli_api",
   "crates/interfaces/tauri_api",
   "apps/cli",
+  "apps/desktop/src-tauri",
 ]
 resolver = "2"
 
@@ -16,8 +17,14 @@ resolver = "2"
 anyhow = "1"
 async-trait = "0.1"
 chrono = { version = "0.4", features = ["serde"] }
+clap = { version = "4.5", features = ["derive"] }
+netstat2 = "0.11"
+regex = "1"
+tauri = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+sysinfo = "0.38"
+tempfile = "3"
 thiserror = "2"
 tokio = { version = "1", features = ["macros", "process", "rt-multi-thread", "time"] }
 uuid = { version = "1", features = ["serde", "v4"] }

@@ -1,0 +1,26 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Port Manager",
+  "version": "0.1.0",
+  "identifier": "com.portmanager.desktop",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build",
+    "devUrl": "http://127.0.0.1:5173",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Port Manager",
+        "width": 1600,
+        "height": 980,
+        "resizable": true
+      }
+    ],
+    "withGlobalTauri": true
+  },
+  "bundle": {
+    "active": false
+  }
+}
