@@ -4,6 +4,42 @@ Port Manager 是一个以 Windows 为优先目标的 Tauri 桌面端口管理工
 
 ![image](apps/desktop/public/port-manager.png)
 
+## 快速开始
+
+### 环境前提
+
+- Windows
+- Node.js
+- npm
+- Rust stable
+- Cargo 可用
+
+### 安装依赖
+
+```bash
+npm install
+```
+
+### 启动浏览器预览
+
+```bash
+cd apps/desktop
+npm run dev
+```
+
+### 启动桌面端
+
+```bash
+cd apps/desktop
+npx @tauri-apps/cli dev
+```
+
+### 运行基础校验
+
+```powershell
+cargo check --workspace
+```
+
 ## 功能特性
 
 - 端口扫描：统一展示本机 TCP/UDP 端口、监听地址、进程和状态
@@ -42,39 +78,3 @@ Port Manager 是一个以 Windows 为优先目标的 Tauri 桌面端口管理工
   - CLI 与 Tauri 接口层
 - `data`
   - 本地运行数据目录
-
-## 快速开始
-
-### 环境前提
-
-- Windows
-- Node.js
-- npm
-- Rust stable
-- Cargo 可用
-
-### 安装依赖
-
-```bash
-npm install
-```
-
-### 启动浏览器预览
-
-```bash
-cd apps/desktop
-npm run dev
-```
-
-### 启动桌面端
-
-```bash
-cd apps/desktop
-npx @tauri-apps/cli dev
-```
-
-### 运行基础校验
-
-```powershell
-cargo check --workspace
-```
