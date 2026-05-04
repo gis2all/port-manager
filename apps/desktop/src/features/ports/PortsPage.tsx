@@ -107,7 +107,7 @@ export function PortsPage({
   return (
     <div className="console-page">
       <section className="summary-strip">
-        {summaryCards.map(({ key, label, value, caption, icon: Icon, toneClass }) => (
+        {summaryCards.map(({ key, label, value, icon: Icon, toneClass }) => (
           <article key={key} className={`metric-card ${toneClass}`}>
             <div className="metric-card-head">
               <span className="metric-card-symbol" aria-hidden="true">
@@ -118,7 +118,6 @@ export function PortsPage({
                 <div className="metric-card-value">{value}</div>
               </div>
             </div>
-            <div className="metric-card-caption">{caption}</div>
           </article>
         ))}
 

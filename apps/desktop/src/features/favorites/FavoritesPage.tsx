@@ -119,7 +119,7 @@ export function FavoritesPage({
   return (
     <div className="console-page">
       <section className="summary-strip">
-        {summaryCards.map(({ key, label, value, caption, icon: Icon, toneClass }) => (
+        {summaryCards.map(({ key, label, value, icon: Icon, toneClass }) => (
           <article key={key} className={`metric-card ${toneClass}`}>
             <div className="metric-card-head">
               <span className="metric-card-symbol" aria-hidden="true">
@@ -130,7 +130,6 @@ export function FavoritesPage({
                 <div className="metric-card-value">{value}</div>
               </div>
             </div>
-            <div className="metric-card-caption">{caption}</div>
           </article>
         ))}
 
@@ -144,15 +143,6 @@ export function FavoritesPage({
       </section>
 
       <section className="panel panel-table">
-        <header className="panel-header">
-          <div>
-            <h2>收藏队列</h2>
-          </div>
-          <div className="panel-header-meta">
-            <StatusPill label={`${favoriteRows.length} 个收藏对象`} tone="accent" />
-          </div>
-        </header>
-
         <div className="table-shell">
           <table className="data-table">
             <thead>

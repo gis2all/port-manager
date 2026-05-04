@@ -130,6 +130,7 @@ body {
 .window-titlebar-copy {
   min-width: 0;
   display: grid;
+  align-content: center;
   gap: 0;
 }
 
@@ -235,7 +236,7 @@ a {
 .brand-mark {
   width: 40px;
   height: 40px;
-  border-radius: 12px;
+  border-radius: 2px;
   display: grid;
   place-items: center;
   background: linear-gradient(135deg, rgba(103, 215, 242, 0.98), rgba(74, 176, 255, 0.92));
@@ -265,7 +266,7 @@ a {
 
 .sidebar-surface {
   border: 1px solid var(--border);
-  border-radius: 16px;
+  border-radius: 2px;
   padding: 12px 13px;
   background: rgba(255, 255, 255, 0.03);
   display: grid;
@@ -300,7 +301,7 @@ a {
 .nav-item {
   position: relative;
   border: 1px solid rgba(255, 255, 255, 0.018);
-  border-radius: 10px;
+  border-radius: 2px;
   background: transparent;
   color: var(--text);
   display: flex;
@@ -406,7 +407,7 @@ a {
 
 .workspace-meta-card {
   border: 1px solid var(--border);
-  border-radius: 16px;
+  border-radius: 2px;
   background: linear-gradient(180deg, rgba(19, 26, 36, 0.95), rgba(14, 19, 26, 0.92));
   padding: 12px 14px;
   box-shadow: var(--shadow);
@@ -454,7 +455,7 @@ a {
 .panel,
 .scan-card {
   border: 1px solid rgba(255, 255, 255, 0.085);
-  border-radius: 10px;
+  border-radius: 2px;
   background: linear-gradient(180deg, rgba(20, 26, 33, 0.98), rgba(15, 21, 28, 0.995));
   box-shadow:
     0 12px 26px rgba(0, 0, 0, 0.14),
@@ -485,7 +486,7 @@ a {
 .metric-card-symbol {
   width: 42px;
   height: 42px;
-  border-radius: 12px;
+  border-radius: 2px;
   display: inline-grid;
   place-items: center;
   flex: 0 0 auto;
@@ -508,9 +509,7 @@ a {
 }
 
 .metric-card-caption {
-  color: var(--muted);
-  font-size: 0.78rem;
-  line-height: 1.25;
+  display: none;
 }
 
 .metric-card-accent {
@@ -605,7 +604,7 @@ a {
 
 .scan-refresh {
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 2px;
   background: rgba(255, 255, 255, 0.03);
   color: var(--text);
   padding: 11px 15px;
@@ -683,13 +682,15 @@ a {
 .panel-table {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 0;
   min-height: 0;
+  padding: 0;
+  overflow: hidden;
 }
 
 .table-shell {
   border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 10px;
+  border-radius: 2px;
   overflow: auto;
   background: rgba(12, 17, 23, 0.95);
   flex: 1;
@@ -801,7 +802,7 @@ a {
 .process-icon {
   width: 18px;
   height: 18px;
-  border-radius: 5px;
+  border-radius: 2px;
   background: rgba(255, 255, 255, 0.02);
   display: inline-grid;
   place-items: center;
@@ -898,7 +899,7 @@ a {
   place-items: center;
   width: 28px;
   height: 28px;
-  border-radius: 8px;
+  border-radius: 2px;
 }
 
 .icon-button:hover:not(:disabled),
@@ -978,7 +979,7 @@ a {
 .pagination-page {
   min-width: 32px;
   height: 30px;
-  border-radius: 8px;
+  border-radius: 2px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(255, 255, 255, 0.02);
   color: var(--text);
@@ -1009,6 +1010,7 @@ a {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  padding: 10px 14px 12px;
   color: var(--muted);
   font-size: 0.76rem;
 }
@@ -1042,7 +1044,7 @@ a {
   gap: 10px;
   padding: 10px 12px;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 2px;
   background: rgba(255, 255, 255, 0.02);
 }
 
@@ -1082,7 +1084,7 @@ a {
   color: #aebbc8;
   width: 28px;
   height: 28px;
-  border-radius: 8px;
+  border-radius: 2px;
   display: inline-grid;
   place-items: center;
 }
@@ -1111,16 +1113,34 @@ a {
 
 .activity-filter select {
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 2px;
   background: rgba(255, 255, 255, 0.03);
   color: var(--text);
   padding: 8px 10px;
   min-width: 122px;
 }
 
+.activity-filter select,
+.field select {
+  appearance: none;
+  -webkit-appearance: none;
+  color-scheme: dark;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6' fill='none'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%23AFC1CF' stroke-width='1.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-position: right 10px center;
+  background-repeat: no-repeat;
+  background-size: 10px 6px;
+  padding-right: 30px;
+}
+
+.activity-filter select option,
+.field select option {
+  background: #151d25;
+  color: #d9e3ea;
+}
+
 .activity-item {
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 2px;
   background: rgba(255, 255, 255, 0.02);
   padding: 10px 12px;
 }
@@ -1212,7 +1232,7 @@ a {
   height: 100%;
   overflow: auto;
   border: 0;
-  border-radius: 0;
+  border-radius: 2px;
   background: transparent;
   box-shadow: none;
 }
@@ -1239,6 +1259,7 @@ a {
   font-size: 1.2rem;
   font-weight: 680;
   letter-spacing: -0.01em;
+  color: #d7e0e7;
 }
 
 .detail-header-actions {
@@ -1273,7 +1294,7 @@ a {
   font-weight: 660;
   letter-spacing: 0;
   text-transform: none;
-  color: var(--text);
+  color: #c9d4dc;
 }
 
 .detail-grid,
@@ -1289,7 +1310,7 @@ a {
 .detail-field {
   border: 0;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: 0;
+  border-radius: 2px;
   background: transparent;
   padding: 6px 0;
   display: grid;
@@ -1299,7 +1320,7 @@ a {
 }
 
 .detail-field span {
-  color: var(--muted);
+  color: #9fb0bc;
   font-size: 0.74rem;
   text-transform: none;
   letter-spacing: 0;
@@ -1307,7 +1328,8 @@ a {
 
 .detail-field strong {
   font-size: 0.83rem;
-  font-weight: 640;
+  font-weight: 600;
+  color: #c3ced7;
   overflow-wrap: anywhere;
 }
 
@@ -1340,7 +1362,7 @@ a {
 
 .detail-note-item {
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 2px;
   background: rgba(255, 255, 255, 0.02);
   padding: 10px 12px;
   display: flex;
@@ -1352,6 +1374,7 @@ a {
 .detail-note-item strong {
   display: block;
   font-size: 0.84rem;
+  color: #c8d3db;
 }
 
 .detail-note-item span {
@@ -1377,7 +1400,7 @@ a {
 }
 
 .detail-empty h2 {
-  color: var(--text);
+  color: #d3dde5;
   font-size: 1rem;
 }
 
@@ -1387,7 +1410,7 @@ a {
   gap: 7px;
   padding: 0;
   border: 0;
-  border-radius: 0;
+  border-radius: 2px;
   background: transparent;
   font-size: 0.8rem;
   font-weight: 560;
@@ -1444,7 +1467,7 @@ a {
   justify-content: center;
   gap: 8px;
   padding: 8px 12px;
-  border-radius: 8px;
+  border-radius: 2px;
   min-height: 36px;
   font-weight: 620;
   font-size: 0.84rem;
@@ -1478,20 +1501,28 @@ a {
   align-items: center;
   gap: 6px;
   padding: 7px 9px;
-  border-radius: 7px;
+  border-radius: 2px;
   min-height: 30px;
   font-size: 0.82rem;
 }
 
 .service-form {
-  display: grid;
-  gap: 7px;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
 }
 
 .form-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 6px;
+  flex: 1;
+  min-height: 0;
+  align-content: start;
+  overflow: auto;
+  padding-right: 2px;
 }
 
 .field {
@@ -1508,7 +1539,7 @@ a {
 .field select {
   width: 100%;
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: 2px;
   background: rgba(255, 255, 255, 0.04);
   color: var(--text);
   padding: 7px 9px;
@@ -1531,26 +1562,34 @@ a {
 .form-footer {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 10px;
   flex-wrap: wrap;
+  flex-shrink: 0;
+  margin-top: auto;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .form-footer .muted-text {
   display: none;
 }
 
+.panel-service-form {
+  overflow: hidden;
+}
+
 .form-error {
   color: #ffd4cf;
   border: 1px solid rgba(255, 112, 98, 0.24);
   background: rgba(255, 112, 98, 0.08);
-  border-radius: 7px;
+  border-radius: 2px;
   padding: 8px 10px;
 }
 
 .service-health-row {
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: 2px;
   background: rgba(255, 255, 255, 0.02);
   padding: 6px 8px;
   display: grid;
@@ -1589,7 +1628,7 @@ a {
 
 .empty-state {
   border: 1px dashed rgba(255, 255, 255, 0.12);
-  border-radius: 6px;
+  border-radius: 2px;
   background: rgba(255, 255, 255, 0.02);
   padding: 10px;
   color: var(--muted);
@@ -1650,7 +1689,7 @@ a {
 .screenshot-mode .nav-item {
   min-height: 56px;
   padding: 0 14px;
-  border-radius: 8px;
+  border-radius: 2px;
   border-color: transparent;
 }
 
@@ -1693,7 +1732,7 @@ a {
 .screenshot-mode .metric-card,
 .screenshot-mode .panel,
 .screenshot-mode .scan-card {
-  border-radius: 8px;
+  border-radius: 2px;
   border-color: rgba(255, 255, 255, 0.09);
   background: linear-gradient(180deg, rgba(31, 39, 47, 0.82), rgba(21, 27, 34, 0.96));
   box-shadow:
@@ -1713,7 +1752,7 @@ a {
 .screenshot-mode .metric-card-symbol {
   width: 44px;
   height: 44px;
-  border-radius: 11px;
+  border-radius: 2px;
 }
 
 .screenshot-mode .metric-card-label {
@@ -1727,7 +1766,7 @@ a {
 }
 
 .screenshot-mode .metric-card-caption {
-  font-size: 0.82rem;
+  display: none;
 }
 
 .screenshot-mode .scan-card {
@@ -1756,7 +1795,7 @@ a {
   min-width: 110px;
   min-height: 38px;
   padding: 0 14px;
-  border-radius: 7px;
+  border-radius: 2px;
   font-size: 0.9rem;
 }
 
@@ -1768,7 +1807,7 @@ a {
 
 .screenshot-mode .table-shell {
   border: 0;
-  border-radius: 0;
+  border-radius: 2px;
   background: transparent;
 }
 
@@ -1847,14 +1886,14 @@ a {
 .screenshot-mode .process-icon {
   width: 18px;
   height: 18px;
-  border-radius: 4px;
+  border-radius: 2px;
   background: transparent;
 }
 
 .screenshot-mode .status-pill {
   gap: 7px;
   padding: 0;
-  border-radius: 0;
+  border-radius: 2px;
   font-size: 0.8rem;
   font-weight: 540;
 }
@@ -1869,7 +1908,7 @@ a {
 .screenshot-mode .table-action-button {
   width: 24px;
   height: 24px;
-  border-radius: 6px;
+  border-radius: 2px;
 }
 
 .screenshot-mode .table-footer {
@@ -1886,7 +1925,7 @@ a {
   width: 32px;
   min-width: 32px;
   height: 30px;
-  border-radius: 6px;
+  border-radius: 2px;
 }
 
 .screenshot-mode .bottom-grid {
@@ -1911,7 +1950,7 @@ a {
 .screenshot-mode .activity-list {
   gap: 0;
   border: 1px solid rgba(255, 255, 255, 0.07);
-  border-radius: 7px;
+  border-radius: 2px;
   background: rgba(11, 16, 21, 0.46);
   overflow: hidden;
 }
@@ -1919,7 +1958,7 @@ a {
 .screenshot-mode .favorite-row,
 .screenshot-mode .activity-item {
   border: 0;
-  border-radius: 0;
+  border-radius: 2px;
   background: transparent;
 }
 
@@ -1954,15 +1993,16 @@ a {
 .screenshot-mode .icon-button {
   width: 30px;
   height: 30px;
-  border-radius: 6px;
+  border-radius: 2px;
 }
 
 .screenshot-mode .activity-filter select {
   min-width: 114px;
   height: 30px;
   padding: 0 11px;
+  padding-right: 30px;
   font-size: 0.84rem;
-  border-radius: 6px;
+  border-radius: 2px;
 }
 
 .screenshot-mode .activity-item {
@@ -2001,6 +2041,7 @@ a {
 .screenshot-mode .detail-header h2 {
   font-size: 1.08rem;
   font-weight: 600;
+  color: #d3dce4;
 }
 
 .screenshot-mode .detail-section {
@@ -2011,6 +2052,7 @@ a {
 .screenshot-mode .detail-section h3 {
   font-size: 0.94rem;
   font-weight: 600;
+  color: #c6d0d8;
 }
 
 .screenshot-mode .detail-field {
@@ -2020,19 +2062,20 @@ a {
 }
 
 .screenshot-mode .detail-field > span {
-  color: #cfdae2;
+  color: #a9b7c1;
   font-size: 0.84rem;
 }
 
 .screenshot-mode .detail-field strong {
   font-size: 0.84rem;
   font-weight: 500;
+  color: #c1ccd5;
 }
 
 .screenshot-mode .detail-actions .primary-button,
 .screenshot-mode .detail-actions .ghost-button {
   min-height: 43px;
-  border-radius: 6px;
+  border-radius: 2px;
   font-size: 0.92rem;
 }
 
@@ -2054,7 +2097,7 @@ a {
   .app-root {
     height: auto;
     min-height: 100%;
-    border-radius: 0;
+    border-radius: 2px;
   }
 
   .app-shell {
@@ -2141,7 +2184,7 @@ a {
   .detail-card,
   .scan-card,
   .window-titlebar {
-    border-radius: 0;
+    border-radius: 2px;
   }
 
   .window-titlebar {

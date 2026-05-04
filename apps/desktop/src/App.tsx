@@ -476,7 +476,6 @@ function WindowTitlebar({ isWindowMaximized }: { isWindowMaximized: boolean }) {
           </div>
           <div className="window-titlebar-copy">
             <strong>{SCREENSHOT_MODE ? "Port Manager" : "端口管理器"}</strong>
-            <span>{SCREENSHOT_MODE ? "Monitor and control local ports and services" : "监控本机端口与服务"}</span>
           </div>
         </div>
       </div>
@@ -526,7 +525,6 @@ function PortDetail({
       <div className="detail-empty">
         <CircleDot size={32} />
         <h2>{SCREENSHOT_MODE ? "Select a port" : "选择一个端口"}</h2>
-        <p>{SCREENSHOT_MODE ? "Port metadata, process details, and related actions appear here." : "端口元信息、进程详情和关联动作会显示在这里。"}</p>
       </div>
     );
   }
@@ -645,7 +643,6 @@ function ServiceDetail({ service, onStartService, onStopService, onToggleFavorit
       <div className="detail-empty">
         <Server size={32} />
         <h2>{SCREENSHOT_MODE ? "Select a service" : "选择一个服务"}</h2>
-        <p>{SCREENSHOT_MODE ? "Service definitions, start state, and controls appear here." : "服务定义、启动状态和控制动作会显示在这里。"}</p>
       </div>
     );
   }

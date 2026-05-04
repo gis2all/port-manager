@@ -114,7 +114,7 @@ export function ServicesPage({
   return (
     <div className="console-page">
       <section className="summary-strip">
-        {summaryCards.map(({ key, label, value, caption, icon: Icon, toneClass }) => (
+        {summaryCards.map(({ key, label, value, icon: Icon, toneClass }) => (
           <article key={key} className={`metric-card ${toneClass}`}>
             <div className="metric-card-head">
               <span className="metric-card-symbol" aria-hidden="true">
@@ -125,7 +125,6 @@ export function ServicesPage({
                 <div className="metric-card-value">{value}</div>
               </div>
             </div>
-            <div className="metric-card-caption">{caption}</div>
           </article>
         ))}
 
@@ -139,15 +138,6 @@ export function ServicesPage({
       </section>
 
       <section className="panel panel-table">
-        <header className="panel-header">
-          <div>
-            <h2>服务目录</h2>
-          </div>
-          <div className="panel-header-meta">
-            <StatusPill label={`${snapshot.services.length} 个服务`} tone="accent" />
-          </div>
-        </header>
-
         <div className="table-shell">
           <table className="data-table">
             <thead>
@@ -269,7 +259,7 @@ export function ServicesPage({
           </div>
         </article>
 
-        <article className="panel">
+        <article className="panel panel-service-form">
           <header className="panel-header panel-header-tight">
             <div>
               <h2>登记服务</h2>
@@ -376,7 +366,6 @@ export function ServicesPage({
             {error ? <div className="form-error">{error}</div> : null}
 
             <div className="form-footer">
-              <span className="muted-text">命令服务会记录启动命令与工作目录，Windows 服务会直接走系统服务控制器。</span>
               <button type="submit" className="primary-button">
                 <Plus size={16} />
                 保存服务
