@@ -1,5 +1,8 @@
 # Port Manager
 
+[![CI](https://github.com/gis2all/port-manager/actions/workflows/ci.yml/badge.svg)](https://github.com/gis2all/port-manager/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 Port Manager 是一个以 Windows 为优先目标的 Tauri 桌面端口管理工具，用来统一查看本机端口、关联进程、受管服务和重点收藏对象。
 
 ![image](apps/desktop/public/port-manager.png)
@@ -40,6 +43,16 @@ npx @tauri-apps/cli dev
 cargo check --workspace
 ```
 
+```powershell
+cargo test --workspace
+```
+
+```powershell
+cd apps/desktop
+npm run typecheck
+npm run build
+```
+
 ## 功能特性
 
 - 端口扫描：统一展示本机 TCP/UDP 端口、监听地址、进程和状态
@@ -78,3 +91,19 @@ cargo check --workspace
   - CLI 与 Tauri 接口层
 - `data`
   - 本地运行数据目录
+
+## 测试与验证
+
+当前仓库已经包含这些测试层：
+
+- `crates/domain/tests`
+- `crates/application/tests`
+- `crates/adapters/sqlite/tests`
+- `apps/cli/tests`
+
+当前公开质量门禁由 GitHub Actions 执行，覆盖：
+
+- `cargo check --workspace`
+- `cargo test --workspace`
+- `cd apps/desktop && npm run typecheck`
+- `cd apps/desktop && npm run build`

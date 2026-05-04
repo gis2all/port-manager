@@ -270,6 +270,22 @@ Windows 侧真实能力来自 Rust 适配层，包括：
 - `cargo check --workspace`
 - `cargo test --workspace`
 
+### GitHub Actions 质量门禁
+
+仓库当前已接入基础 GitHub Actions 工作流：
+
+- 工作流文件：`.github/workflows/ci.yml`
+- 触发条件：`push` 到 `main`、`pull_request`
+- 运行平台：`windows-latest`
+
+当前 CI 覆盖：
+
+- `cargo check --workspace`
+- `cargo test --workspace`
+- `cd apps/desktop && npm ci`
+- `cd apps/desktop && npm run typecheck`
+- `cd apps/desktop && npm run build`
+
 ## 当前窗口配置
 
 桌面窗口默认配置在 `D:/Code/port-manager/apps/desktop/src-tauri/tauri.conf.json`：
@@ -477,6 +493,22 @@ CLI 入口在：
 - `detect` 支持 `json` / `table`
 
 CLI 和桌面端共享同一个 Rust 应用服务层，也共享 `data/port-manager.db`。
+
+## 测试现状
+
+当前仓库已经有可运行测试，不是“缺少测试目录”的状态。
+
+现有主要测试层包括：
+
+- `D:/Code/port-manager/crates/domain/tests`
+- `D:/Code/port-manager/crates/application/tests`
+- `D:/Code/port-manager/crates/adapters/sqlite/tests`
+- `D:/Code/port-manager/apps/cli/tests`
+
+当前公开可见性已经通过 README 和 GitHub Actions 补齐：
+
+- README 明确写出了测试层和验证命令
+- GitHub Actions 提供基础质量门禁
 
 ## 当前 UI 设计基线
 
