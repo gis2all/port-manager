@@ -1,4 +1,4 @@
-import { Play, Plus, RefreshCcw, Square, Star, Trash2, TriangleAlert, Zap } from "lucide-react";
+import { Play, Plus, RefreshCcw, Square, Star, Trash2, TriangleAlert, Zap, type LucideIcon } from "lucide-react";
 import { useMemo, useState } from "react";
 import { StatusPill } from "../../components/StatusPill";
 import { formatOptionalText, formatPortList, formatServiceKindLabel, formatServiceStatusLabel, serviceStatusTone } from "../../lib/presentation";
@@ -25,6 +25,15 @@ interface ServiceFormState {
   workdir: string;
   startCommand: string;
   expectedPortsText: string;
+}
+
+interface SummaryMetricCard {
+  key: string;
+  label: string;
+  value: number;
+  caption: string;
+  icon: LucideIcon;
+  toneClass: string;
 }
 
 function createEmptyServiceForm(): ServiceFormState {
@@ -66,52 +75,65 @@ export function ServicesPage({
       }),
     [snapshot.services],
   );
+  const summaryCards: SummaryMetricCard[] = [
+    {
+      key: "total",
+      label: "已接管服务",
+      value: snapshot.services.length,
+      caption: "统一服务清单",
+      icon: Zap,
+      toneClass: "metric-card-accent",
+    },
+    {
+      key: "running",
+      label: "运行中",
+      value: runningCount,
+      caption: "当前正在运行",
+      icon: Play,
+      toneClass: "metric-card-success",
+    },
+    {
+      key: "attention",
+      label: "待处理",
+      value: attentionCount,
+      caption: "需要人工关注",
+      icon: TriangleAlert,
+      toneClass: "metric-card-warning",
+    },
+    {
+      key: "favorites",
+      label: "已收藏",
+      value: favoriteCount,
+      caption: "重点服务收藏",
+      icon: Star,
+      toneClass: "metric-card-accent",
+    },
+  ];
 
   return (
     <div className="console-page">
       <section className="summary-strip">
-        <article className="metric-card metric-card-accent">
-          <div className="metric-card-label">
-            <Zap size={16} />
-            <span>已接管服务</span>
-          </div>
-          <div className="metric-card-value">{snapshot.services.length}</div>
-          <div className="metric-card-caption">命令服务与 Windows 服务合并管理</div>
-        </article>
-
-        <article className="metric-card metric-card-success">
-          <div className="metric-card-label">
-            <Play size={16} />
-            <span>运行中</span>
-          </div>
-          <div className="metric-card-value">{runningCount}</div>
-          <div className="metric-card-caption">已经处于运行状态的服务</div>
-        </article>
-
-        <article className="metric-card metric-card-warning">
-          <div className="metric-card-label">
-            <TriangleAlert size={16} />
-            <span>待处理</span>
-          </div>
-          <div className="metric-card-value">{attentionCount}</div>
-          <div className="metric-card-caption">未运行或需要人工关注的服务</div>
-        </article>
-
-        <article className="metric-card metric-card-accent">
-          <div className="metric-card-label">
-            <Star size={16} />
-            <span>已收藏</span>
-          </div>
-          <div className="metric-card-value">{favoriteCount}</div>
-          <div className="metric-card-caption">固定在收藏夹里的重点服务</div>
-        </article>
+        {summaryCards.map(({ key, label, value, caption, icon: Icon, toneClass }) => (
+          <article key={key} className={`metric-card ${toneClass}`}>
+            <div className="metric-card-head">
+              <span className="metric-card-symbol" aria-hidden="true">
+                <Icon size={16} />
+              </span>
+              <div className="metric-card-copy">
+                <div className="metric-card-label">{label}</div>
+                <div className="metric-card-value">{value}</div>
+              </div>
+            </div>
+            <div className="metric-card-caption">{caption}</div>
+          </article>
+        ))}
 
         <article className="scan-card">
           <button type="button" className="scan-refresh" onClick={onRefresh} disabled={isRefreshing}>
             <RefreshCcw size={15} />
             <span>{isRefreshing ? "刷新中" : "同步目录"}</span>
           </button>
-          <div className="scan-card-meta">
+          <div className="metric-card-meta">
             <span>{`最近扫描 ${lastScanLabel}`}</span>
             <span>自动轮询 5 秒</span>
           </div>
@@ -122,7 +144,6 @@ export function ServicesPage({
         <header className="panel-header">
           <div>
             <h2>服务目录</h2>
-            <p>统一查看服务配置、端口覆盖和运行状态，点击某行可在右侧执行控制动作。</p>
           </div>
           <div className="panel-header-meta">
             <StatusPill label={`${snapshot.services.length} 个服务`} tone="accent" />
@@ -219,8 +240,41 @@ export function ServicesPage({
         <article className="panel">
           <header className="panel-header panel-header-tight">
             <div>
-              <h2>快速录入</h2>
-              <p>先定义服务，再把预期端口和启动入口接进统一控制台。</p>
+              <h2>服务健康</h2>
+            </div>
+            <StatusPill label={`${favoriteCount} 个收藏`} tone="accent" />
+          </header>
+
+          <div className="service-health-list">
+            {coverageRows.length ? (
+              coverageRows.slice(0, 5).map((service) => (
+                <div key={service.id} className="service-health-row">
+                  <div className="service-health-main">
+                    <div className="service-health-copy">
+                      <strong>{service.name}</strong>
+                      <span>{formatOptionalText(service.start_command ?? service.service_name, "未配置启动入口")}</span>
+                    </div>
+                    <StatusPill label={formatServiceStatusLabel(service.status)} tone={serviceStatusTone(service.status)} />
+                  </div>
+
+                  <div className="service-health-ports">
+                    <span>{`预期: ${formatPortList(service.expected_ports)}`}</span>
+                    <span>{`已观测: ${formatPortList(service.observed_ports, "未发现")}`}</span>
+                  </div>
+
+                  <div className="service-health-meta">{service.expected_ports.length && !service.observed_ports.length ? "需要补齐监听端口或启动动作" : "端口覆盖已同步到控制台"}</div>
+                </div>
+              ))
+            ) : (
+              <div className="empty-state">还没有接管服务，先在右侧登记一个。</div>
+            )}
+          </div>
+        </article>
+
+        <article className="panel">
+          <header className="panel-header panel-header-tight">
+            <div>
+              <h2>登记服务</h2>
             </div>
             <button
               type="button"
@@ -331,41 +385,6 @@ export function ServicesPage({
               </button>
             </div>
           </form>
-        </article>
-
-        <article className="panel">
-          <header className="panel-header panel-header-tight">
-            <div>
-              <h2>端口覆盖</h2>
-              <p>快速判断某个服务是否已经按预期占住端口。</p>
-            </div>
-            <StatusPill label="按优先级排序" tone="accent" />
-          </header>
-
-          <div className="service-health-list">
-            {coverageRows.length ? (
-              coverageRows.slice(0, 6).map((service) => (
-                <div key={service.id} className="service-health-row">
-                  <div className="service-health-main">
-                    <div className="service-health-copy">
-                      <strong>{service.name}</strong>
-                      <span>{formatOptionalText(service.start_command ?? service.service_name, "未配置启动入口")}</span>
-                    </div>
-                    <StatusPill label={formatServiceStatusLabel(service.status)} tone={serviceStatusTone(service.status)} />
-                  </div>
-
-                  <div className="service-health-ports">
-                    <span>{`预期: ${formatPortList(service.expected_ports)}`}</span>
-                    <span>{`已观测: ${formatPortList(service.observed_ports, "未发现")}`}</span>
-                  </div>
-
-                  <div className="service-health-meta">{service.expected_ports.length && !service.observed_ports.length ? "需要补齐监听端口或启动动作" : "端口覆盖已同步到控制台"}</div>
-                </div>
-              ))
-            ) : (
-              <div className="empty-state">还没有接管服务，先在左侧表单中创建一个。</div>
-            )}
-          </div>
         </article>
       </section>
     </div>

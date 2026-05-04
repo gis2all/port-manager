@@ -1,4 +1,4 @@
-import { Bookmark, Play, RefreshCcw, Server, Square, Star, TriangleAlert, Zap } from "lucide-react";
+import { Bookmark, Play, RefreshCcw, Server, Square, Star, TriangleAlert, Zap, type LucideIcon } from "lucide-react";
 import { useMemo } from "react";
 import { StatusPill } from "../../components/StatusPill";
 import { favoritePorts, favoriteServices } from "../../lib/dashboard";
@@ -22,6 +22,15 @@ interface FavoritesPageProps {
 type FavoriteTableRow =
   | { key: string; kind: "port"; port: PortDto; service: ManagedServiceDto | null }
   | { key: string; kind: "service"; service: ManagedServiceDto };
+
+interface SummaryMetricCard {
+  key: string;
+  label: string;
+  value: number;
+  caption: string;
+  icon: LucideIcon;
+  toneClass: string;
+}
 
 export function FavoritesPage({
   snapshot,
@@ -71,52 +80,65 @@ export function FavoritesPage({
       }),
     [linkedServiceById, ports, services],
   );
+  const summaryCards: SummaryMetricCard[] = [
+    {
+      key: "total",
+      label: "收藏总数",
+      value: ports.length + services.length,
+      caption: "统一收藏视图",
+      icon: Bookmark,
+      toneClass: "metric-card-accent",
+    },
+    {
+      key: "ports",
+      label: "收藏端口",
+      value: ports.length,
+      caption: "重点端口总览",
+      icon: Star,
+      toneClass: "metric-card-success",
+    },
+    {
+      key: "services",
+      label: "收藏服务",
+      value: services.length,
+      caption: "常用服务入口",
+      icon: Server,
+      toneClass: "metric-card-accent",
+    },
+    {
+      key: "running",
+      label: "可立即处理",
+      value: runningFavorites,
+      caption: "当前可直接处理",
+      icon: Zap,
+      toneClass: "metric-card-warning",
+    },
+  ];
 
   return (
     <div className="console-page">
       <section className="summary-strip">
-        <article className="metric-card metric-card-accent">
-          <div className="metric-card-label">
-            <Bookmark size={16} />
-            <span>收藏总数</span>
-          </div>
-          <div className="metric-card-value">{ports.length + services.length}</div>
-          <div className="metric-card-caption">端口和服务统一聚合到一个收藏视图</div>
-        </article>
-
-        <article className="metric-card metric-card-success">
-          <div className="metric-card-label">
-            <Star size={16} />
-            <span>收藏端口</span>
-          </div>
-          <div className="metric-card-value">{ports.length}</div>
-          <div className="metric-card-caption">需要重点关注的本机端口</div>
-        </article>
-
-        <article className="metric-card metric-card-accent">
-          <div className="metric-card-label">
-            <Server size={16} />
-            <span>收藏服务</span>
-          </div>
-          <div className="metric-card-value">{services.length}</div>
-          <div className="metric-card-caption">常用服务与启动入口</div>
-        </article>
-
-        <article className="metric-card metric-card-warning">
-          <div className="metric-card-label">
-            <Zap size={16} />
-            <span>可立即处理</span>
-          </div>
-          <div className="metric-card-value">{runningFavorites}</div>
-          <div className="metric-card-caption">当前处于运行或监听状态的收藏对象</div>
-        </article>
+        {summaryCards.map(({ key, label, value, caption, icon: Icon, toneClass }) => (
+          <article key={key} className={`metric-card ${toneClass}`}>
+            <div className="metric-card-head">
+              <span className="metric-card-symbol" aria-hidden="true">
+                <Icon size={16} />
+              </span>
+              <div className="metric-card-copy">
+                <div className="metric-card-label">{label}</div>
+                <div className="metric-card-value">{value}</div>
+              </div>
+            </div>
+            <div className="metric-card-caption">{caption}</div>
+          </article>
+        ))}
 
         <article className="scan-card">
           <button type="button" className="scan-refresh" onClick={onRefresh} disabled={isRefreshing}>
             <RefreshCcw size={15} />
             <span>{isRefreshing ? "刷新中" : "同步收藏"}</span>
           </button>
-          <div className="scan-card-meta">
+          <div className="metric-card-meta">
             <span>{`最近扫描 ${lastScanLabel}`}</span>
             <span>自动轮询 5 秒</span>
           </div>
@@ -127,7 +149,6 @@ export function FavoritesPage({
         <header className="panel-header">
           <div>
             <h2>收藏队列</h2>
-            <p>所有星标对象共用一张主表，点击可跳回对应详情页。</p>
           </div>
           <div className="panel-header-meta">
             <StatusPill label={`${favoriteRows.length} 个收藏对象`} tone="accent" />
@@ -274,8 +295,7 @@ export function FavoritesPage({
         <article className="panel">
           <header className="panel-header panel-header-tight">
             <div>
-              <h2>星标服务</h2>
-              <p>常用服务保持在最短路径里，方便直接启停。</p>
+              <h2>收藏服务</h2>
             </div>
             <StatusPill label={`${services.length} 个服务`} tone="accent" />
           </header>
@@ -335,8 +355,7 @@ export function FavoritesPage({
         <article className="panel">
           <header className="panel-header panel-header-tight">
             <div>
-              <h2>星标端口</h2>
-              <p>重点端口单独列出，适合快速观察监听与风险状态。</p>
+              <h2>收藏端口摘要</h2>
             </div>
             <StatusPill label={`${ports.length} 个端口`} tone="accent" />
           </header>
