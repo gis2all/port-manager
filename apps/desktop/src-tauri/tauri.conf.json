@@ -12,10 +12,14 @@
   "app": {
     "windows": [
       {
+        "label": "main",
         "title": "Port Manager",
         "width": 1600,
         "height": 980,
-        "resizable": true
+        "resizable": true,
+        "decorations": false,
+        "shadow": false,
+        "backgroundColor": "#0b1017"
       }
     ],
     "withGlobalTauri": true

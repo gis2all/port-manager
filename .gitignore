@@ -7,10 +7,16 @@
 /.idea
 /.vscode
 /.playwright-mcp
+/.codex-run
 /docs
 desktop-shot*.png
 edge-*.png
 /apps/desktop/pw-browser*.png
+/apps/desktop/current-port-*.png
+/apps/desktop/*-1366.png
+/apps/desktop/ui-pass-*.png
+/apps/desktop/web-shot*.png
+/window-check*.png
 *.db
 *.db-shm
 *.db-wal

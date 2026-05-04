@@ -1,6 +1,22 @@
+import { isScreenshotMode } from "./screenshotMode";
 import type { ManagedServiceDto, PortDto } from "./types";
 
+const SCREENSHOT_MODE = isScreenshotMode();
+
 export function formatPortStatusLabel(status: PortDto["status"]) {
+  if (SCREENSHOT_MODE) {
+    switch (status) {
+      case "listening":
+        return "Listening";
+      case "active":
+        return "Active";
+      case "closed":
+        return "Closed";
+      default:
+        return "Unknown";
+    }
+  }
+
   switch (status) {
     case "listening":
       return "监听中";
@@ -27,6 +43,21 @@ export function portStatusTone(status: PortDto["status"]) {
 }
 
 export function formatServiceStatusLabel(status: ManagedServiceDto["status"]) {
+  if (SCREENSHOT_MODE) {
+    switch (status) {
+      case "running":
+        return "Running";
+      case "starting":
+        return "Starting";
+      case "failed":
+        return "Failed";
+      case "stopped":
+        return "Stopped";
+      default:
+        return "Unknown";
+    }
+  }
+
   switch (status) {
     case "running":
       return "运行中";
@@ -57,6 +88,10 @@ export function serviceStatusTone(status: ManagedServiceDto["status"]) {
 }
 
 export function formatServiceKindLabel(kind: ManagedServiceDto["kind"]) {
+  if (SCREENSHOT_MODE) {
+    return kind === "command" ? "Command" : "Windows Service";
+  }
+
   return kind === "command" ? "命令服务" : "Windows 服务";
 }
 
@@ -64,10 +99,10 @@ export function formatProtocolLabel(protocol: PortDto["protocol"]) {
   return protocol.toUpperCase();
 }
 
-export function formatPortList(ports: number[], fallback = "未配置") {
+export function formatPortList(ports: number[], fallback = SCREENSHOT_MODE ? "Not configured" : "未配置") {
   return ports.length ? ports.join(", ") : fallback;
 }
 
-export function formatOptionalText(value: string | null | undefined, fallback = "未检测") {
+export function formatOptionalText(value: string | null | undefined, fallback = SCREENSHOT_MODE ? "Not detected" : "未检测") {
   return value && value.trim() ? value : fallback;
 }

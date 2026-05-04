@@ -11,9 +11,10 @@ import {
   togglePortFavorite as togglePortFavoriteMock,
   toggleServiceFavorite as toggleServiceFavoriteMock,
 } from "./mockBackend";
+import { isScreenshotMode } from "./screenshotMode";
 
 async function call<T>(command: string, args?: Record<string, unknown>): Promise<T> {
-  if (!isMockRuntime()) {
+  if (!isMockRuntime() && !isScreenshotMode()) {
     return invoke<T>(command, args);
   }
 

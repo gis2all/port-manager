@@ -1,15 +1,5 @@
-import type {
-  DashboardSnapshotDto,
-  ManagedServiceDraftDto,
-  ManagedServiceDto,
-  PortDto,
-  PortProtocol,
-  PortStatus,
-  ServiceKind,
-  ServiceStatus,
-} from "./types";
-
-type ServiceSeed = ManagedServiceDto;
+import { isTauri } from "@tauri-apps/api/core";
+import type { DashboardSnapshotDto, ManagedServiceDraftDto, ManagedServiceDto, PortDto, PortStatus } from "./types";
 
 interface MockState {
   snapshot: DashboardSnapshotDto;
@@ -22,10 +12,10 @@ const fillerProcessNames: Record<Exclude<PortStatus, "unknown">, string[]> = {
 };
 
 const state: MockState = {
-  snapshot: createSeedSnapshot(),
+  snapshot: createScreenshotSnapshot(),
 };
 
-function createSeedSnapshot(): DashboardSnapshotDto {
+function createScreenshotSnapshot(): DashboardSnapshotDto {
   const apacheService = createService({
     id: "11111111-1111-4111-8111-111111111111",
     name: "apache",
@@ -109,7 +99,7 @@ function createSeedSnapshot(): DashboardSnapshotDto {
       createPort({
         port: 80,
         protocol: "tcp",
-        listen_address: "0.0.0.80",
+        listen_address: "0.0.0.0:80",
         pid: 4560,
         process_name: "httpd.exe",
         status: "listening",
@@ -120,7 +110,7 @@ function createSeedSnapshot(): DashboardSnapshotDto {
       createPort({
         port: 135,
         protocol: "tcp",
-        listen_address: "127.0.0.1",
+        listen_address: "0.0.0.0:135",
         pid: 928,
         process_name: "svchost.exe (RpcSs)",
         status: "listening",
@@ -131,7 +121,7 @@ function createSeedSnapshot(): DashboardSnapshotDto {
       createPort({
         port: 443,
         protocol: "tcp",
-        listen_address: "0.0.0.443",
+        listen_address: "0.0.0.0:443",
         pid: 4560,
         process_name: "httpd.exe",
         status: "listening",
@@ -142,7 +132,7 @@ function createSeedSnapshot(): DashboardSnapshotDto {
       createPort({
         port: 5357,
         protocol: "udp",
-        listen_address: "0.0.0.5357",
+        listen_address: "0.0.0.0:5357",
         pid: 2048,
         process_name: "svchost.exe (Dnscache)",
         status: "active",
@@ -178,7 +168,7 @@ function createSeedSnapshot(): DashboardSnapshotDto {
         listen_address: "127.0.0.1:6379",
         pid: 2876,
         process_name: "redis-server.exe",
-        status: "listening",
+        status: "active",
         is_favorite: false,
         matched_service_id: redisService.id,
         matched_service_name: redisService.name,
@@ -186,9 +176,9 @@ function createSeedSnapshot(): DashboardSnapshotDto {
       createPort({
         port: 8080,
         protocol: "tcp",
-        listen_address: "0.0.0.0",
+        listen_address: "0.0.0.0:8080",
         pid: null,
-        process_name: null,
+        process_name: "[No Process]",
         status: "closed",
         is_favorite: false,
         matched_service_id: backendService.id,
@@ -221,12 +211,13 @@ function createFillerPorts(): PortDto[] {
   return statuses.map((status, index) => {
     const port = 9001 + index;
     const processPool = status === "listening" ? fillerProcessNames.listening : status === "active" ? fillerProcessNames.active : [];
-    const processName = status === "closed" ? null : processPool[index % processPool.length];
+    const processName = status === "closed" ? "[No Process]" : processPool[index % processPool.length];
+    const addressPrefix = status === "active" ? "0.0.0.0" : "127.0.0.1";
 
     return createPort({
       port,
       protocol: index % 5 === 0 ? "udp" : "tcp",
-      listen_address: status === "active" ? "0.0.0.0" : "127.0.0.1",
+      listen_address: `${addressPrefix}:${port}`,
       pid: status === "closed" ? null : 5000 + index,
       process_name: processName,
       status,
@@ -261,7 +252,7 @@ export async function killProcessByPort(port: number): Promise<number> {
 
   const pid = record.pid;
   record.pid = null;
-  record.process_name = null;
+  record.process_name = "[No Process]";
   record.status = "closed";
 
   const service = record.matched_service_id
@@ -335,7 +326,7 @@ export async function startManagedService(serviceId: string): Promise<void> {
     if (existing) {
       existing.status = "listening";
       existing.pid = existing.pid ?? 7000 + (portNumber % 1000);
-      existing.process_name = existing.process_name ?? service.name;
+      existing.process_name = existing.process_name === "[No Process]" ? service.name : (existing.process_name ?? service.name);
       existing.matched_service_id = service.id;
       existing.matched_service_name = service.name;
     } else {
@@ -343,7 +334,7 @@ export async function startManagedService(serviceId: string): Promise<void> {
         createPort({
           port: portNumber,
           protocol: "tcp",
-          listen_address: "127.0.0.1",
+          listen_address: `127.0.0.1:${portNumber}`,
           pid: 7000 + (portNumber % 1000),
           process_name: service.name,
           status: "listening",
@@ -370,12 +361,12 @@ export async function stopManagedService(serviceId: string): Promise<void> {
     if (existing && existing.matched_service_id === service.id) {
       existing.status = "closed";
       existing.pid = null;
-      existing.process_name = null;
+      existing.process_name = "[No Process]";
     }
   }
   service.observed_ports = [];
 }
 
 export function isMockRuntime(): boolean {
-  return typeof window === "undefined" || !("__TAURI__" in window);
+  return typeof window === "undefined" || !isTauri();
 }
