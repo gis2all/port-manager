@@ -17,7 +17,7 @@ edge-*.png
 /apps/desktop/ui-pass-*.png
 /apps/desktop/web-shot*.png
 /window-check*.png
-*.db
-*.db-shm
-*.db-wal
+data/*.db
+data/*.db-shm
+data/*.db-wal
 *.log

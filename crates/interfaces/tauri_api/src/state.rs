@@ -5,6 +5,7 @@ use pm_adapters_windows::{
     WindowsPortProvider, WindowsProcessController, WindowsServiceController,
 };
 use pm_application::PortManagerService;
+use std::fs;
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -47,5 +48,7 @@ impl AppState {
 }
 
 fn workspace_db_path() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../port-manager.db")
+    let data_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../data");
+    fs::create_dir_all(&data_dir).expect("failed to create data directory");
+    data_dir.join("port-manager.db")
 }

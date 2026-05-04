@@ -7,6 +7,7 @@ use pm_adapters_windows::{
 };
 use pm_application::PortManagerService;
 use pm_domain::FavoriteTarget;
+use std::fs;
 use std::path::PathBuf;
 
 fn build_service() -> Result<
@@ -77,5 +78,7 @@ fn render_port_table(ports: &[pm_application::PortDto]) -> String {
 }
 
 fn workspace_db_path() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../port-manager.db")
+    let data_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../data");
+    fs::create_dir_all(&data_dir).expect("failed to create data directory");
+    data_dir.join("port-manager.db")
 }
