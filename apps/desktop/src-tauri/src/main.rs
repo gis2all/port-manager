@@ -17,8 +17,13 @@ async fn kill_process_by_port(state: State<'_, AppState>, port: u16) -> Result<u
 }
 
 #[tauri::command]
-async fn toggle_port_favorite(state: State<'_, AppState>, port: u16) -> Result<(), String> {
-    api::toggle_port_favorite(state, port).await
+async fn toggle_port_favorite(
+    state: State<'_, AppState>,
+    row_key: String,
+    port: u16,
+    is_favorite: bool,
+) -> Result<(), String> {
+    api::toggle_port_favorite(state, row_key, port, is_favorite).await
 }
 
 #[tauri::command]

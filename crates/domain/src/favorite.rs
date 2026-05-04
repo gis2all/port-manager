@@ -5,6 +5,7 @@ use crate::ManagedServiceId;
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum FavoriteTarget {
     Port(u16),
+    PortRow { key: String, port: u16 },
     Service(ManagedServiceId),
 }
 
@@ -12,6 +13,7 @@ impl FavoriteTarget {
     pub fn key(&self) -> String {
         match self {
             Self::Port(port) => format!("port:{port}"),
+            Self::PortRow { key, .. } => format!("port-row:{key}"),
             Self::Service(id) => format!("service:{id}"),
         }
     }

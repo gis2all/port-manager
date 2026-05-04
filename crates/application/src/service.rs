@@ -4,14 +4,33 @@ use anyhow::Result;
 use chrono::Utc;
 use pm_domain::{
     Favorite, FavoriteTarget, ManagedService, ManagedServiceId, ManagedServiceRun,
-    PortProtocol, PortStatus, RunOwnership, ServiceKind, ServiceRunStatus,
+    PortProtocol, PortRecord, PortStatus, RunOwnership, ServiceKind, ServiceRunStatus,
 };
 use pm_ports::{
     CommandRunner, FavoriteRepository, ManagedServiceRepository, PortProvider, ProcessController,
     RunStateRepository, ServiceController, StartCommandRequest,
 };
-use std::collections::{BTreeSet, HashMap};
+use std::collections::{BTreeSet, HashMap, HashSet};
 use uuid::Uuid;
+
+fn port_row_key(port: &PortRecord, matched_service_id: Option<ManagedServiceId>) -> String {
+    [
+        port.port.to_string(),
+        match port.protocol {
+            PortProtocol::Tcp => "tcp".to_owned(),
+            PortProtocol::Udp => "udp".to_owned(),
+        },
+        port.listen_address.clone(),
+        port.pid
+            .map(|pid| pid.to_string())
+            .unwrap_or_else(|| "null".to_owned()),
+        port.process_name.clone().unwrap_or_default(),
+        matched_service_id
+            .map(|service_id| service_id.to_string())
+            .unwrap_or_default(),
+    ]
+    .join("|")
+}
 
 pub struct PortManagerService<P, PC, SC, CR, FR, MR, RR> {
     port_provider: P,
@@ -57,6 +76,24 @@ where
         let ports = self.port_provider.scan_ports().await?;
         let services = self.managed_service_repository.list().await?;
         let favorites = self.favorite_repository.list().await?;
+        let port_counts = ports.iter().fold(HashMap::new(), |mut counts, port| {
+            *counts.entry(port.port).or_insert(0usize) += 1;
+            counts
+        });
+        let port_row_favorites = favorites
+            .iter()
+            .filter_map(|favorite| match &favorite.target {
+                FavoriteTarget::PortRow { key, .. } => Some(key.clone()),
+                _ => None,
+            })
+            .collect::<HashSet<_>>();
+        let legacy_port_favorites = favorites
+            .iter()
+            .filter_map(|favorite| match favorite.target {
+                FavoriteTarget::Port(port) => Some(port),
+                _ => None,
+            })
+            .collect::<HashSet<_>>();
 
         let services_by_id: HashMap<ManagedServiceId, _> = services
             .iter()
@@ -78,6 +115,11 @@ where
                     .insert(port.port);
             }
 
+            let matched_service_id = matched.map(|service| service.id());
+            let row_key = port_row_key(port, matched_service_id);
+            let is_legacy_favorite = port_counts.get(&port.port).copied().unwrap_or_default() == 1
+                && legacy_port_favorites.contains(&port.port);
+
             port_rows.push(PortDto {
                 port: port.port,
                 protocol: match port.protocol {
@@ -93,10 +135,8 @@ where
                     PortStatus::Closed => "closed".into(),
                     PortStatus::Unknown => "unknown".into(),
                 },
-                is_favorite: favorites
-                    .iter()
-                    .any(|favorite| favorite.target == FavoriteTarget::Port(port.port)),
-                matched_service_id: matched.map(|service| service.id()),
+                is_favorite: port_row_favorites.contains(&row_key) || is_legacy_favorite,
+                matched_service_id,
                 matched_service_name: matched.map(|service| service.name().to_owned()),
             });
         }
@@ -215,6 +255,27 @@ where
             self.favorite_repository.delete(&target).await
         } else {
             self.favorite_repository.upsert(Favorite::new(target)).await
+        }
+    }
+
+    pub async fn set_port_favorite(
+        &self,
+        row_key: String,
+        port: u16,
+        is_favorite: bool,
+    ) -> Result<()> {
+        let row_target = FavoriteTarget::PortRow {
+            key: row_key,
+            port,
+        };
+        let legacy_target = FavoriteTarget::Port(port);
+
+        if is_favorite {
+            self.favorite_repository.delete(&legacy_target).await?;
+            self.favorite_repository.upsert(Favorite::new(row_target)).await
+        } else {
+            self.favorite_repository.delete(&row_target).await?;
+            self.favorite_repository.delete(&legacy_target).await
         }
     }
 

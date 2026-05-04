@@ -28,6 +28,19 @@ fn favorite_target_key_is_stable() {
 }
 
 #[test]
+fn favorite_port_row_target_key_is_stable() {
+    let favorite = Favorite::new(FavoriteTarget::PortRow {
+        key: "3000|tcp|127.0.0.1|4421|node|service".into(),
+        port: 3000,
+    });
+
+    assert_eq!(
+        favorite.target.key(),
+        "port-row:3000|tcp|127.0.0.1|4421|node|service"
+    );
+}
+
+#[test]
 fn favorite_service_target_key_is_stable() {
     let service = ManagedService::command("web", "npm run dev", None, vec![3000]);
     let favorite = Favorite::new(FavoriteTarget::Service(service.id()));

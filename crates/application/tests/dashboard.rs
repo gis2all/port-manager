@@ -8,6 +8,28 @@ use support::{
     StaticPortProvider,
 };
 
+fn port_row_key(
+    port: u16,
+    protocol: &str,
+    listen_address: &str,
+    pid: Option<u32>,
+    process_name: Option<&str>,
+    matched_service_id: Option<uuid::Uuid>,
+) -> String {
+    [
+        port.to_string(),
+        protocol.to_owned(),
+        listen_address.to_owned(),
+        pid.map(|value| value.to_string())
+            .unwrap_or_else(|| "null".to_owned()),
+        process_name.unwrap_or_default().to_owned(),
+        matched_service_id
+            .map(|value| value.to_string())
+            .unwrap_or_default(),
+    ]
+    .join("|")
+}
+
 #[tokio::test]
 async fn dashboard_snapshot_marks_favorites_and_service_matches() {
     let service = ManagedService::command(
@@ -119,4 +141,49 @@ async fn dashboard_snapshot_falls_back_to_expected_port_matching() {
         snapshot.ports[0].matched_service_name.as_deref(),
         Some("frontend")
     );
+}
+
+#[tokio::test]
+async fn dashboard_snapshot_keeps_port_favorites_row_scoped_for_duplicate_ports() {
+    let row_key = port_row_key(135, "tcp", "0.0.0.0", Some(2016), Some("svchost.exe"), None);
+
+    let snapshot = PortManagerService::new(
+        StaticPortProvider {
+            ports: vec![
+                PortRecord {
+                    port: 135,
+                    protocol: PortProtocol::Tcp,
+                    listen_address: "0.0.0.0".into(),
+                    pid: Some(2016),
+                    process_name: Some("svchost.exe".into()),
+                    status: PortStatus::Listening,
+                    matched_service_id: None,
+                },
+                PortRecord {
+                    port: 135,
+                    protocol: PortProtocol::Tcp,
+                    listen_address: "::".into(),
+                    pid: Some(2016),
+                    process_name: Some("svchost.exe".into()),
+                    status: PortStatus::Listening,
+                    matched_service_id: None,
+                },
+            ],
+        },
+        RecordingProcessController::default(),
+        RecordingServiceController::default(),
+        RecordingCommandRunner::default(),
+        InMemoryFavoriteRepository::new(vec![Favorite::new(FavoriteTarget::PortRow {
+            key: row_key,
+            port: 135,
+        })]),
+        InMemoryManagedServiceRepository::new(vec![]),
+        InMemoryRunStateRepository::default(),
+    )
+    .dashboard_snapshot()
+    .await
+    .expect("snapshot should preserve row-scoped favorites");
+
+    assert!(snapshot.ports[0].is_favorite);
+    assert!(!snapshot.ports[1].is_favorite);
 }

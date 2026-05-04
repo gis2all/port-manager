@@ -20,10 +20,15 @@ pub async fn kill_process_by_port(state: State<'_, AppState>, port: u16) -> Resu
         .map_err(|error| error.to_string())
 }
 
-pub async fn toggle_port_favorite(state: State<'_, AppState>, port: u16) -> Result<(), String> {
+pub async fn toggle_port_favorite(
+    state: State<'_, AppState>,
+    row_key: String,
+    port: u16,
+    is_favorite: bool,
+) -> Result<(), String> {
     state
         .service()
-        .toggle_favorite(FavoriteTarget::Port(port))
+        .set_port_favorite(row_key, port, is_favorite)
         .await
         .map_err(|error| error.to_string())
 }
