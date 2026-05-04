@@ -1,18 +1,18 @@
 import { Activity, ChevronDown, ChevronLeft, ChevronRight, CircleDot, Database, ExternalLink, FileText, Globe, Lock, Monitor, MoreHorizontal, Network, Play, RefreshCcw, Settings, Shield, Square, Star, Trash2, type LucideIcon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { StatusPill } from "../../components/StatusPill";
-import { favoritePorts, findService } from "../../lib/dashboard";
+import { favoritePorts, findService, getPortRowKey } from "../../lib/dashboard";
 import { formatOptionalText, formatPortStatusLabel, formatProtocolLabel, portStatusTone } from "../../lib/presentation";
 import { isScreenshotMode, SCREENSHOT_AUTO_REFRESH_LABEL } from "../../lib/screenshotMode";
-import type { ActivityEntry, ActivityTone, DashboardSnapshotDto } from "../../lib/types";
+import type { ActivityEntry, ActivityTone, DashboardSnapshotDto, PortDto } from "../../lib/types";
 
 const SCREENSHOT_MODE = isScreenshotMode();
 
 interface PortsPageProps {
   snapshot: DashboardSnapshotDto;
   activity: ActivityEntry[];
-  selectedPort: number | null;
-  onSelectPort: (port: number) => void;
+  selectedPortKey: string | null;
+  onSelectPort: (port: PortDto) => void;
   onRefresh: () => void;
   onTogglePortFavorite: (port: number) => void;
   onKillPort: (port: number) => void;
@@ -68,7 +68,7 @@ interface SummaryMetricCard {
 export function PortsPage({
   snapshot,
   activity,
-  selectedPort,
+  selectedPortKey,
   onSelectPort,
   onRefresh,
   onTogglePortFavorite,
@@ -174,7 +174,8 @@ export function PortsPage({
             <tbody>
               {pagePorts.map((port) => {
                 const service = port.matched_service_id ? serviceById.get(port.matched_service_id) ?? findService(snapshot, port.matched_service_id) ?? null : null;
-                const isSelected = selectedPort === port.port;
+                const portRowKey = getPortRowKey(port);
+                const isSelected = selectedPortKey === portRowKey;
                 const canStartService = Boolean(service && port.status === "closed" && service.status !== "running" && service.status !== "starting");
                 const processGlyph = getProcessGlyph(port, service);
                 const ProcessIcon = processGlyph.icon;
@@ -185,7 +186,7 @@ export function PortsPage({
                     : port.pid.toLocaleString("zh-CN");
 
                 return (
-                  <tr key={`${port.port}-${port.listen_address}`} className={isSelected ? "is-selected" : undefined} onClick={() => onSelectPort(port.port)}>
+                  <tr key={portRowKey} className={isSelected ? "is-selected" : undefined} onClick={() => onSelectPort(port)}>
                     <td>
                       <div className="port-cell">
                         <span className="port-number">{port.port}</span>
@@ -243,7 +244,7 @@ export function PortsPage({
                           className="table-action-button table-action-button-more"
                           onClick={(event) => {
                             event.stopPropagation();
-                            onSelectPort(port.port);
+                            onSelectPort(port);
                           }}
                           aria-label={SCREENSHOT_MODE ? "More actions" : "更多操作"}
                         >
@@ -310,15 +311,15 @@ export function PortsPage({
 
                 return (
                   <div
-                    key={`${port.port}-${port.listen_address}`}
+                    key={getPortRowKey(port)}
                     className="favorite-row"
                     role="button"
                     tabIndex={0}
-                    onClick={() => onSelectPort(port.port)}
+                    onClick={() => onSelectPort(port)}
                     onKeyDown={(event) => {
                       if (event.key === "Enter" || event.key === " ") {
                         event.preventDefault();
-                        onSelectPort(port.port);
+                        onSelectPort(port);
                       }
                     }}
                   >

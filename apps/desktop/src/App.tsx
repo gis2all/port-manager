@@ -7,7 +7,7 @@ import { FavoritesPage } from "./features/favorites/FavoritesPage";
 import { PortsPage } from "./features/ports/PortsPage";
 import { ServicesPage } from "./features/services/ServicesPage";
 import { deleteManagedService, getDashboardSnapshot, killProcessByPort, saveManagedService, startManagedService, stopManagedService, togglePortFavorite, toggleServiceFavorite } from "./lib/api";
-import { countFavorites, countListeningPorts, countRunningServices, findPort, findService } from "./lib/dashboard";
+import { countFavorites, countListeningPorts, countRunningServices, findPortByRowKey, findService, getPortRowKey } from "./lib/dashboard";
 import { isMockRuntime } from "./lib/mockBackend";
 import { formatOptionalText, formatPortList, formatPortStatusLabel, formatProtocolLabel, formatServiceKindLabel, formatServiceStatusLabel, portStatusTone, serviceStatusTone } from "./lib/presentation";
 import { isScreenshotMode, SCREENSHOT_ACTIVITY, SCREENSHOT_LAST_SCAN_LABEL, SCREENSHOT_SYSTEM_INFO, SCREENSHOT_TIMESTAMP } from "./lib/screenshotMode";
@@ -44,7 +44,7 @@ function getDesktopWindowHandle() {
 
 export function App() {
   const [activeTab, setActiveTab] = useState<TabKey>("ports");
-  const [selectedPort, setSelectedPort] = useState<number | null>(null);
+  const [selectedPortKey, setSelectedPortKey] = useState<string | null>(null);
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
   const [portSelectionLocked, setPortSelectionLocked] = useState(false);
   const [activity, setActivity] = useState<ActivityEntry[]>(() => (SCREENSHOT_MODE ? SCREENSHOT_ACTIVITY : []));
@@ -67,7 +67,7 @@ export function App() {
   const scanTimestampLabel = SCREENSHOT_MODE
     ? SCREENSHOT_TIMESTAMP
     : formatDetailedTimestamp(new Date(dashboard.dataUpdatedAt || Date.now()));
-  const portRecord = selectedPort === null ? null : findPort(snapshot, selectedPort) ?? null;
+  const portRecord = selectedPortKey === null ? null : findPortByRowKey(snapshot, selectedPortKey) ?? null;
   const serviceRecord = selectedServiceId === null ? null : findService(snapshot, selectedServiceId) ?? null;
   const portServiceRecord = portRecord
     ? portRecord.matched_service_id
@@ -77,16 +77,16 @@ export function App() {
 
   useEffect(() => {
     if (!snapshot.ports.length) {
-      setSelectedPort(null);
+      setSelectedPortKey(null);
       return;
     }
 
-    setSelectedPort((current) => {
-      if (current !== null && snapshot.ports.some((port) => port.port === current)) {
+    setSelectedPortKey((current) => {
+      if (current !== null && snapshot.ports.some((port) => getPortRowKey(port) === current)) {
         return current;
       }
 
-      return portSelectionLocked ? null : snapshot.ports[0].port;
+      return portSelectionLocked ? null : getPortRowKey(snapshot.ports[0]);
     });
   }, [snapshot.ports, portSelectionLocked]);
 
@@ -196,15 +196,15 @@ export function App() {
     }
   };
 
-  const handleSelectPort = (port: number) => {
+  const handleSelectPort = (port: PortDto) => {
     setActiveTab("ports");
     setPortSelectionLocked(false);
-    setSelectedPort(port);
+    setSelectedPortKey(getPortRowKey(port));
   };
 
   const handleClearPortSelection = () => {
     setPortSelectionLocked(true);
-    setSelectedPort(null);
+    setSelectedPortKey(null);
   };
 
   const handleSelectService = (serviceId: string) => {
@@ -363,7 +363,7 @@ export function App() {
                 <PortsPage
                   snapshot={snapshot}
                   activity={activity}
-                  selectedPort={selectedPort}
+                  selectedPortKey={selectedPortKey}
                   onSelectPort={handleSelectPort}
                   onRefresh={handleRefresh}
                   onTogglePortFavorite={handleTogglePortFavorite}

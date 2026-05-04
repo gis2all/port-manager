@@ -16,6 +16,21 @@ export function findPort(snapshot: DashboardSnapshotDto, port: number): PortDto 
   return snapshot.ports.find((entry) => entry.port === port);
 }
 
+export function getPortRowKey(port: PortDto): string {
+  return [
+    port.port,
+    port.protocol,
+    port.listen_address,
+    port.pid ?? "null",
+    port.process_name ?? "",
+    port.matched_service_id ?? "",
+  ].join("|");
+}
+
+export function findPortByRowKey(snapshot: DashboardSnapshotDto, key: string): PortDto | undefined {
+  return snapshot.ports.find((entry) => getPortRowKey(entry) === key);
+}
+
 export function findService(snapshot: DashboardSnapshotDto, serviceId: string): ManagedServiceDto | undefined {
   return snapshot.services.find((entry) => entry.id === serviceId);
 }

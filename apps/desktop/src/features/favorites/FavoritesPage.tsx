@@ -1,13 +1,13 @@
 import { Bookmark, Play, RefreshCcw, Server, Square, Star, TriangleAlert, Zap, type LucideIcon } from "lucide-react";
 import { useMemo } from "react";
 import { StatusPill } from "../../components/StatusPill";
-import { favoritePorts, favoriteServices } from "../../lib/dashboard";
+import { favoritePorts, favoriteServices, getPortRowKey } from "../../lib/dashboard";
 import { formatOptionalText, formatPortList, formatPortStatusLabel, formatProtocolLabel, formatServiceKindLabel, formatServiceStatusLabel, portStatusTone, serviceStatusTone } from "../../lib/presentation";
 import type { DashboardSnapshotDto, ManagedServiceDto, PortDto } from "../../lib/types";
 
 interface FavoritesPageProps {
   snapshot: DashboardSnapshotDto;
-  onSelectPort: (port: number) => void;
+  onSelectPort: (port: PortDto) => void;
   onSelectService: (serviceId: string) => void;
   onRefresh: () => void;
   onTogglePortFavorite: (port: number) => void;
@@ -53,7 +53,7 @@ export function FavoritesPage({
     () =>
       [
         ...ports.map((port) => ({
-          key: `port-${port.port}`,
+          key: getPortRowKey(port),
           kind: "port" as const,
           port,
           service: port.matched_service_id ? linkedServiceById.get(port.matched_service_id) ?? null : null,
@@ -227,7 +227,7 @@ export function FavoritesPage({
                 const canStartService = Boolean(linkedService && row.port.status === "closed" && linkedService.status !== "running" && linkedService.status !== "starting");
 
                 return (
-                  <tr key={row.key} onClick={() => onSelectPort(row.port.port)}>
+                  <tr key={row.key} onClick={() => onSelectPort(row.port)}>
                     <td>
                       <div className="cell-stack">
                         <span className="strong">{`端口 ${row.port.port} · ${formatProtocolLabel(row.port.protocol)}`}</span>
@@ -364,15 +364,15 @@ export function FavoritesPage({
             {ports.length ? (
               ports.map((port) => (
                 <div
-                  key={port.port}
+                  key={getPortRowKey(port)}
                   className="favorite-row"
                   role="button"
                   tabIndex={0}
-                  onClick={() => onSelectPort(port.port)}
+                  onClick={() => onSelectPort(port)}
                   onKeyDown={(event) => {
                     if (event.key === "Enter" || event.key === " ") {
                       event.preventDefault();
-                      onSelectPort(port.port);
+                      onSelectPort(port);
                     }
                   }}
                 >
