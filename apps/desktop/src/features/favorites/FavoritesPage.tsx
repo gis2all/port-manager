@@ -371,7 +371,6 @@ export function FavoritesPage({
                     </div>
                     <span className="favorite-row-process">{formatOptionalText(port.process_name, "未检测到进程")}</span>
                   </div>
-                  <div className="favorite-row-meta mono">{port.listen_address}</div>
                   <StatusPill label={formatPortStatusLabel(port.status)} tone={portStatusTone(port.status)} />
                   <button
                     type="button"

@@ -266,14 +266,12 @@ export function PortsPage({
             </div>
           </header>
 
-          <div className="favorites-list favorite-port-list">
-            {favoritePortRows.length ? (
-              favoritePortRows.map((port) => {
-                const service = port.matched_service_id ? serviceById.get(port.matched_service_id) ?? null : null;
-
-                return (
-                  <div
-                    key={getPortRowKey(port)}
+            <div className="favorites-list favorite-port-list">
+              {favoritePortRows.length ? (
+                favoritePortRows.map((port) => {
+                  return (
+                    <div
+                      key={getPortRowKey(port)}
                     className="favorite-row favorite-port-row"
                     role="button"
                     tabIndex={0}
@@ -284,18 +282,16 @@ export function PortsPage({
                         onSelectPort(port);
                       }
                     }}
-                  >
-                    <div className="favorite-row-main">
-                      <div className="favorite-row-title">
-                        <Star size={14} fill="currentColor" />
-                        <span>{`端口 ${port.port} · ${formatProtocolLabel(port.protocol)}`}</span>
+                    >
+                      <div className="favorite-row-main">
+                        <div className="favorite-row-title">
+                          <Star size={14} fill="currentColor" />
+                          <span>{`端口 ${port.port} · ${formatProtocolLabel(port.protocol)}`}</span>
+                        </div>
                       </div>
-                      <span className="favorite-row-process">{formatOptionalText(port.process_name, service?.name ?? ("未检测到进程"))}</span>
-                    </div>
-                    <div className="favorite-row-meta mono">{port.listen_address}</div>
-                    <StatusPill label={formatPortStatusLabel(port.status)} tone={portStatusTone(port.status)} />
-                    <button
-                      type="button"
+                      <StatusPill label={formatPortStatusLabel(port.status)} tone={portStatusTone(port.status)} />
+                      <button
+                        type="button"
                       className="favorite-row-action"
                       onClick={(event) => {
                         event.stopPropagation();

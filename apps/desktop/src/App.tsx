@@ -713,24 +713,24 @@ function FavoritesDetail({ snapshot }: { snapshot: DashboardSnapshotDto }) {
       <section className="detail-section">
         <h3>{"重点对象"}</h3>
         <div className="detail-note-list">
-          {favoritePortItems.map((port) => (
-            <div key={`favorite-port-${port.port}`} className="detail-note-item">
-              <div>
-                <strong>{`端口 ${port.port}`}</strong>
-                <span>{formatOptionalText(port.process_name, "未检测到进程")}</span>
+            {favoritePortItems.map((port) => (
+              <div key={`favorite-port-${port.port}`} className="detail-note-item">
+                <div className="detail-note-copy">
+                  <strong>{`端口 ${port.port}`}</strong>
+                  <span>{formatOptionalText(port.process_name, "未检测到进程")}</span>
+                </div>
+                <StatusPill label={formatPortStatusLabel(port.status)} tone={portStatusTone(port.status)} />
               </div>
-              <StatusPill label={formatPortStatusLabel(port.status)} tone={portStatusTone(port.status)} />
-            </div>
-          ))}
+            ))}
 
-          {favoriteServiceItems.map((service) => (
-            <div key={`favorite-service-${service.id}`} className="detail-note-item">
-              <div>
-                <strong>{service.name}</strong>
-                <span>{formatServiceKindLabel(service.kind)}</span>
+            {favoriteServiceItems.map((service) => (
+              <div key={`favorite-service-${service.id}`} className="detail-note-item">
+                <div className="detail-note-copy">
+                  <strong>{service.name}</strong>
+                  <span>{formatServiceKindLabel(service.kind)}</span>
+                </div>
+                <StatusPill label={formatServiceStatusLabel(service.status)} tone={serviceStatusTone(service.status)} />
               </div>
-              <StatusPill label={formatServiceStatusLabel(service.status)} tone={serviceStatusTone(service.status)} />
-            </div>
           ))}
 
           {!favoritePortItems.length && !favoriteServiceItems.length ? <div className="empty-state">{"还没有收藏对象。"}</div> : null}

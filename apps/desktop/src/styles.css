@@ -1039,15 +1039,25 @@ a {
   padding-right: 2px;
 }
 
+.favorites-list,
+.service-health-list {
+  align-content: start;
+  grid-auto-rows: 48px;
+}
+
 .favorite-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto auto;
   align-items: center;
   gap: 10px;
-  padding: 10px 12px;
+  height: 48px;
+  min-height: 48px;
+  max-height: 48px;
+  padding: 0 12px;
   border: 1px solid var(--border);
   border-radius: 2px;
   background: rgba(255, 255, 255, 0.02);
+  overflow: hidden;
 }
 
 .favorite-row-main {
@@ -1055,6 +1065,7 @@ a {
   display: flex;
   align-items: center;
   gap: 10px;
+  overflow: hidden;
 }
 
 .favorite-row-title {
@@ -1080,6 +1091,14 @@ a {
   font-size: 0.74rem;
 }
 
+.favorite-row-title {
+  flex: 0 1 auto;
+}
+
+.favorite-row-process {
+  flex: 1 1 0;
+}
+
 .favorite-row-action {
   border: 0;
   background: transparent;
@@ -1092,7 +1111,7 @@ a {
 }
 
 .favorite-port-row {
-  grid-template-columns: minmax(0, 1fr) minmax(0, 120px) auto auto;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   height: 48px;
   min-height: 48px;
   max-height: 48px;
@@ -1501,13 +1520,17 @@ a {
   gap: 10px;
 }
 
-.detail-note-item strong {
+.detail-note-copy {
+  min-width: 0;
+}
+
+.detail-note-copy strong {
   display: block;
   font-size: 0.84rem;
   color: #c8d3db;
 }
 
-.detail-note-item span {
+.detail-note-copy span {
   display: block;
   margin-top: 4px;
   color: var(--muted);
@@ -1730,21 +1753,38 @@ a {
   border: 1px solid var(--border);
   border-radius: 2px;
   background: rgba(255, 255, 255, 0.02);
-  padding: 6px 8px;
-  display: grid;
-  gap: 6px;
+  height: 48px;
+  min-height: 48px;
+  max-height: 48px;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  overflow: hidden;
 }
 
 .service-health-main {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 12px;
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+}
+
+.service-health-copy {
+  min-width: 0;
+  flex: 1 1 auto;
 }
 
 .service-health-copy strong {
   display: block;
   font-size: 0.78rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .service-health-copy span {
@@ -1754,11 +1794,18 @@ a {
 .service-health-ports {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 10px;
   color: var(--muted);
-  font-size: 0.68rem;
-  flex-wrap: wrap;
+  font-size: 0.72rem;
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+.service-health-ports span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .service-health-meta {
@@ -1782,6 +1829,7 @@ a {
 
 .desktop-layout {
   --layout-scale: 1;
+  --desktop-bottom-row-height: 286px;
 }
 
 .desktop-layout .app-scale-frame {
@@ -1852,7 +1900,7 @@ a {
 }
 
 .desktop-layout .console-page {
-  grid-template-rows: auto minmax(0, 1fr) 284px;
+  grid-template-rows: auto minmax(0, 1fr) var(--desktop-bottom-row-height);
   gap: 10px;
   padding-bottom: 10px;
 }
@@ -2062,7 +2110,7 @@ a {
 }
 
 .desktop-layout .bottom-grid {
-  grid-template-columns: minmax(0, 0.94fr) minmax(0, 1.08fr);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 10px;
 }
 
@@ -2118,7 +2166,7 @@ a {
 }
 
 .desktop-layout .favorite-port-row {
-  grid-template-columns: minmax(0, 1fr) minmax(0, 126px) auto auto;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   height: 48px;
   min-height: 48px;
   max-height: 48px;
@@ -2228,10 +2276,6 @@ a {
   min-height: 38px;
   border-radius: 2px;
   font-size: 0.86rem;
-}
-
-.desktop-layout .console-page-services {
-  grid-template-rows: auto minmax(0, 1fr) 286px;
 }
 
 @media (max-width: 1320px) {
