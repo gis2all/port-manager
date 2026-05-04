@@ -1,6 +1,10 @@
 import type { ActivityEntry } from "./types";
 
-export const SCREENSHOT_MODE = import.meta.env.DEV;
+function parseBooleanEnv(value: unknown): boolean {
+  return typeof value === "string" && ["1", "true", "yes", "on"].includes(value.toLowerCase());
+}
+
+export const SCREENSHOT_MODE = parseBooleanEnv(import.meta.env.VITE_SCREENSHOT_MODE);
 
 export const SCREENSHOT_WINDOW_SIZE = {
   width: 1536,

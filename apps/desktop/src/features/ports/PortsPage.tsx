@@ -126,10 +126,10 @@ export function PortsPage({
             <RefreshCcw size={15} />
             <span>{SCREENSHOT_MODE ? (isRefreshing ? "Refreshing..." : "Refresh") : isRefreshing ? "刷新中" : "立即刷新"}</span>
           </button>
-          <div className={`metric-card-meta ${SCREENSHOT_MODE ? "scan-card-meta" : ""}`}>
+          <div className="metric-card-meta scan-card-meta">
             <span>{SCREENSHOT_MODE ? `Last scan: ${lastScanLabel}` : `最近扫描 ${lastScanLabel}`}</span>
             <span className="scan-card-meta-row">
-              {SCREENSHOT_MODE ? <Settings size={12} /> : null}
+              <Settings size={12} />
               <span>{SCREENSHOT_MODE ? `Auto-refresh: ${SCREENSHOT_AUTO_REFRESH_LABEL}` : "自动轮询 5 秒"}</span>
             </span>
           </div>
@@ -192,7 +192,7 @@ export function PortsPage({
                       </div>
                     </td>
                     <td>
-                      <span className={SCREENSHOT_MODE ? "protocol-label" : "protocol-chip"}>{formatProtocolLabel(port.protocol)}</span>
+                      <span className="protocol-label">{formatProtocolLabel(port.protocol)}</span>
                     </td>
                     <td className="mono">{pidLabel}</td>
                     <td>
@@ -202,7 +202,6 @@ export function PortsPage({
                         </div>
                         <div className="cell-stack">
                           <span className="process-name">{formatOptionalText(port.process_name, SCREENSHOT_MODE ? "[No Process]" : "未检测到进程")}</span>
-                          {SCREENSHOT_MODE ? null : <span className="process-service">{service?.name ?? "未关联服务"}</span>}
                         </div>
                       </div>
                     </td>
@@ -302,11 +301,6 @@ export function PortsPage({
                 <span>{SCREENSHOT_MODE ? `Favorites (${favoritePortRows.length})` : `重点端口 (${favoritePortRows.length})`}</span>
               </h2>
             </div>
-            {SCREENSHOT_MODE ? null : (
-              <button type="button" className="text-link" onClick={onOpenFavorites}>
-                管理收藏夹
-              </button>
-            )}
           </header>
 
           <div className="favorites-list">

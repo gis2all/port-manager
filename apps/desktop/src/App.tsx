@@ -1,8 +1,7 @@
-import { LogicalSize } from "@tauri-apps/api/dpi";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { Bookmark, CircleDot, Copy, LayoutGrid, type LucideIcon, Minus, Network, Play, Server, Settings, Shield, Square, Star, TriangleAlert, X } from "lucide-react";
-import { type ReactNode, useEffect, useRef, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { type Dispatch, type ReactNode, type SetStateAction, useEffect, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { StatusPill } from "./components/StatusPill";
 import { FavoritesPage } from "./features/favorites/FavoritesPage";
 import { PortsPage } from "./features/ports/PortsPage";
@@ -11,7 +10,7 @@ import { deleteManagedService, getDashboardSnapshot, killProcessByPort, saveMana
 import { countFavorites, countListeningPorts, countRunningServices, findPort, findService } from "./lib/dashboard";
 import { isMockRuntime } from "./lib/mockBackend";
 import { formatOptionalText, formatPortList, formatPortStatusLabel, formatProtocolLabel, formatServiceKindLabel, formatServiceStatusLabel, portStatusTone, serviceStatusTone } from "./lib/presentation";
-import { isScreenshotMode, SCREENSHOT_ACTIVITY, SCREENSHOT_LAST_SCAN_LABEL, SCREENSHOT_SYSTEM_INFO, SCREENSHOT_TIMESTAMP, SCREENSHOT_WINDOW_SIZE } from "./lib/screenshotMode";
+import { isScreenshotMode, SCREENSHOT_ACTIVITY, SCREENSHOT_LAST_SCAN_LABEL, SCREENSHOT_SYSTEM_INFO, SCREENSHOT_TIMESTAMP } from "./lib/screenshotMode";
 import type { ActivityEntry, ActivityTone, DashboardSnapshotDto, ManagedServiceDraftDto, ManagedServiceDto, PortDto } from "./lib/types";
 
 const DASHBOARD_QUERY_KEY = ["dashboard"];
@@ -24,6 +23,8 @@ const EMPTY_SNAPSHOT: DashboardSnapshotDto = {
 };
 
 const SCREENSHOT_MODE = isScreenshotMode();
+const REFERENCE_LAYOUT_MODE = true;
+const MAX_ACTIVITY_ENTRIES = 10;
 
 const NAV_ITEMS: Array<{ key: TabKey; label: string; description: string; icon: LucideIcon }> = SCREENSHOT_MODE
   ? [
@@ -42,15 +43,15 @@ function getDesktopWindowHandle() {
 }
 
 export function App() {
-  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<TabKey>("ports");
   const [selectedPort, setSelectedPort] = useState<number | null>(null);
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
   const [portSelectionLocked, setPortSelectionLocked] = useState(false);
-  const [activity, setActivity] = useState<ActivityEntry[]>(() => (SCREENSHOT_MODE ? SCREENSHOT_ACTIVITY : isMockRuntime() ? createSeedActivity() : []));
-  const [lastScanLabel, setLastScanLabel] = useState(() => (SCREENSHOT_MODE ? SCREENSHOT_LAST_SCAN_LABEL : formatClockLabel(new Date())));
+  const [activity, setActivity] = useState<ActivityEntry[]>(() => (SCREENSHOT_MODE ? SCREENSHOT_ACTIVITY : []));
   const [isWindowMaximized, setIsWindowMaximized] = useState(false);
   const workspaceBodyRef = useRef<HTMLDivElement | null>(null);
+  const previousSnapshotRef = useRef<DashboardSnapshotDto | null>(null);
+  const suppressNextSnapshotDiffRef = useRef(false);
 
   const dashboard = useQuery({
     queryKey: DASHBOARD_QUERY_KEY,
@@ -60,6 +61,12 @@ export function App() {
   });
 
   const snapshot = dashboard.data ?? EMPTY_SNAPSHOT;
+  const lastScanLabel = SCREENSHOT_MODE
+    ? SCREENSHOT_LAST_SCAN_LABEL
+    : formatClockLabel(new Date(dashboard.dataUpdatedAt || Date.now()));
+  const scanTimestampLabel = SCREENSHOT_MODE
+    ? SCREENSHOT_TIMESTAMP
+    : formatDetailedTimestamp(new Date(dashboard.dataUpdatedAt || Date.now()));
   const portRecord = selectedPort === null ? null : findPort(snapshot, selectedPort) ?? null;
   const serviceRecord = selectedServiceId === null ? null : findService(snapshot, selectedServiceId) ?? null;
   const portServiceRecord = portRecord
@@ -138,47 +145,38 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    const desktopWindow = getDesktopWindowHandle();
-    if (!desktopWindow) {
+    if (SCREENSHOT_MODE) {
       return;
     }
 
-    if (!SCREENSHOT_MODE) {
+    if (!dashboard.data) {
       return;
     }
 
-    const lockWindow = async () => {
-      const lockedSize = new LogicalSize(SCREENSHOT_WINDOW_SIZE.width, SCREENSHOT_WINDOW_SIZE.height);
+    const previousSnapshot = previousSnapshotRef.current;
 
-      await desktopWindow.unmaximize();
-      await desktopWindow.setResizable(false);
-      await desktopWindow.setMinSize(lockedSize);
-      await desktopWindow.setMaxSize(lockedSize);
-      await desktopWindow.setSize(lockedSize);
-      await desktopWindow.center();
-      await desktopWindow.show();
-      setIsWindowMaximized(false);
-    };
+    if (previousSnapshot && !suppressNextSnapshotDiffRef.current) {
+      const diffEntries = buildSnapshotDiffActivity(previousSnapshot, dashboard.data);
+      if (diffEntries.length) {
+        prependActivityEntries(setActivity, diffEntries, formatClockLabel(new Date(dashboard.dataUpdatedAt || Date.now())));
+      }
+    }
 
-    void lockWindow();
-  }, []);
+    suppressNextSnapshotDiffRef.current = false;
+    previousSnapshotRef.current = dashboard.data;
+  }, [dashboard.data, dashboard.dataUpdatedAt]);
 
-  const refreshDashboard = async () => {
-    await queryClient.invalidateQueries({ queryKey: DASHBOARD_QUERY_KEY });
-    setLastScanLabel(SCREENSHOT_MODE ? SCREENSHOT_LAST_SCAN_LABEL : formatClockLabel(new Date()));
+  const refreshDashboard = async ({ suppressSnapshotDiff = false }: { suppressSnapshotDiff?: boolean } = {}) => {
+    suppressNextSnapshotDiffRef.current = suppressSnapshotDiff;
+    await dashboard.refetch();
   };
 
   const logAction = (title: string, detail: string, tone: ActivityTone = "neutral") => {
-    setActivity((current) => [
-      {
-        id: crypto.randomUUID(),
-        title,
-        detail,
-        tone,
-        at: SCREENSHOT_MODE ? SCREENSHOT_LAST_SCAN_LABEL : formatClockLabel(new Date()),
-      },
-      ...current,
-    ].slice(0, 10));
+    prependActivityEntries(
+      setActivity,
+      [{ title, detail, tone }],
+      SCREENSHOT_MODE ? SCREENSHOT_LAST_SCAN_LABEL : formatClockLabel(new Date()),
+    );
   };
 
   const logFailure = (title: string, error: unknown) => {
@@ -190,7 +188,7 @@ export function App() {
       await refreshDashboard();
       logAction(
         SCREENSHOT_MODE ? "Refresh complete" : "刷新完成",
-        SCREENSHOT_MODE ? "Screenshot snapshot synced to the locked reference state." : isMockRuntime() ? "演示快照已同步到最新状态。" : "已从本机重新加载端口与服务快照。",
+        SCREENSHOT_MODE ? "Screenshot snapshot synced to the locked reference state." : isMockRuntime() ? "预览快照已同步到最新状态。" : "已从本机重新加载端口与服务快照。",
         "neutral",
       );
     } catch (error) {
@@ -222,7 +220,7 @@ export function App() {
         SCREENSHOT_MODE ? `Process ${pid} on port ${port} was terminated.` : `端口 ${port} 对应的进程 ${pid} 已终止。`,
         "warning",
       );
-      await refreshDashboard();
+      await refreshDashboard({ suppressSnapshotDiff: true });
     } catch (error) {
       logFailure(SCREENSHOT_MODE ? "Kill process failed" : "结束进程失败", error);
     }
@@ -236,7 +234,7 @@ export function App() {
         SCREENSHOT_MODE ? `Favorite state for port ${port} was toggled.` : `端口 ${port} 的收藏状态已切换。`,
         "success",
       );
-      await refreshDashboard();
+      await refreshDashboard({ suppressSnapshotDiff: true });
     } catch (error) {
       logFailure(SCREENSHOT_MODE ? "Favorite update failed" : "端口收藏更新失败", error);
     }
@@ -251,7 +249,7 @@ export function App() {
         SCREENSHOT_MODE ? `Favorite state for ${service?.name ?? serviceId} was toggled.` : `${service?.name ?? serviceId} 的收藏状态已切换。`,
         "success",
       );
-      await refreshDashboard();
+      await refreshDashboard({ suppressSnapshotDiff: true });
     } catch (error) {
       logFailure(SCREENSHOT_MODE ? "Service favorite update failed" : "服务收藏更新失败", error);
     }
@@ -262,7 +260,7 @@ export function App() {
       await startManagedService(serviceId);
       const service = findService(snapshot, serviceId);
       logAction(SCREENSHOT_MODE ? "Service started" : "服务已启动", SCREENSHOT_MODE ? `${service?.name ?? serviceId} started.` : `${service?.name ?? serviceId} 已启动。`, "success");
-      await refreshDashboard();
+      await refreshDashboard({ suppressSnapshotDiff: true });
     } catch (error) {
       logFailure(SCREENSHOT_MODE ? "Start service failed" : "启动服务失败", error);
     }
@@ -273,7 +271,7 @@ export function App() {
       await stopManagedService(serviceId);
       const service = findService(snapshot, serviceId);
       logAction(SCREENSHOT_MODE ? "Service stopped" : "服务已停止", SCREENSHOT_MODE ? `${service?.name ?? serviceId} stopped.` : `${service?.name ?? serviceId} 已停止。`, "warning");
-      await refreshDashboard();
+      await refreshDashboard({ suppressSnapshotDiff: true });
     } catch (error) {
       logFailure(SCREENSHOT_MODE ? "Stop service failed" : "停止服务失败", error);
     }
@@ -283,7 +281,7 @@ export function App() {
     try {
       const serviceId = await saveManagedService(draft);
       logAction(SCREENSHOT_MODE ? "Service saved" : "服务已保存", SCREENSHOT_MODE ? `${draft.name} was added to the service catalog.` : `${draft.name} 已加入服务目录。`, "success");
-      await refreshDashboard();
+      await refreshDashboard({ suppressSnapshotDiff: true });
       setSelectedServiceId(serviceId);
       setActiveTab("services");
     } catch (error) {
@@ -303,7 +301,7 @@ export function App() {
       if (selectedServiceId === serviceId) {
         setSelectedServiceId(null);
       }
-      await refreshDashboard();
+      await refreshDashboard({ suppressSnapshotDiff: true });
     } catch (error) {
       logFailure(SCREENSHOT_MODE ? "Delete service failed" : "删除服务失败", error);
     }
@@ -313,41 +311,15 @@ export function App() {
     setActivity([]);
   };
 
-  const systemInfo = SCREENSHOT_MODE
-    ? SCREENSHOT_SYSTEM_INFO
-    : isMockRuntime()
-      ? {
-          user: "Administrator",
-          details: ["Windows 11 Pro 23H2 (22631.3593)", "Intel(R) Core(TM) i7-12700K", "32 GB RAM"],
-          scanLabel: "扫描完成",
-        }
-      : {
-          user: "Administrator",
-          details: ["Windows 11 Pro 23H2 (22631.3593)", "Intel(R) Core(TM) i7-12700K", "32 GB RAM"],
-          scanLabel: "扫描完成",
-        };
+  const systemInfo = getSystemInfo(isMockRuntime());
 
   return (
-    <div className={`app-root ${SCREENSHOT_MODE ? "screenshot-mode" : ""}`}>
+    <div className={`app-root ${REFERENCE_LAYOUT_MODE ? "screenshot-mode" : ""}`}>
       <div className="app-scale-frame">
         <WindowTitlebar isWindowMaximized={isWindowMaximized} />
 
         <div className="app-shell">
           <aside className="sidebar">
-          {!SCREENSHOT_MODE ? (
-            <div className="sidebar-head">
-              <div className="brand">
-                <div className="brand-mark">
-                  <Network size={18} />
-                </div>
-                <div>
-                  <strong>Port Manager</strong>
-                  <span>Monitor and control local ports and services</span>
-                </div>
-              </div>
-            </div>
-          ) : null}
-
           <nav className="sidebar-nav">
             {NAV_ITEMS.map(({ key, label, description, icon: Icon }) => (
               <button
@@ -440,6 +412,7 @@ export function App() {
                 <PortDetail
                   port={portRecord}
                   matchedService={portServiceRecord}
+                  scanTimestampLabel={scanTimestampLabel}
                   onClose={handleClearPortSelection}
                   onKillPort={handleKillPort}
                   onToggleFavorite={handleTogglePortFavorite}
@@ -536,19 +509,17 @@ function WindowTitlebar({ isWindowMaximized }: { isWindowMaximized: boolean }) {
 
   return (
     <header className="window-titlebar">
-      {SCREENSHOT_MODE ? (
-        <div className="window-titlebar-brand">
-          <div className="brand">
-            <div className="brand-mark">
-              <Network size={18} />
-            </div>
-            <div className="window-titlebar-copy">
-              <strong>Port Manager</strong>
-              <span>Monitor and control local ports and services</span>
-            </div>
+      <div className="window-titlebar-brand">
+        <div className="brand">
+          <div className="brand-mark">
+            <Network size={18} />
+          </div>
+          <div className="window-titlebar-copy">
+            <strong>{SCREENSHOT_MODE ? "Port Manager" : "端口管理器"}</strong>
+            <span>{SCREENSHOT_MODE ? "Monitor and control local ports and services" : "监控本机端口与服务"}</span>
           </div>
         </div>
-      ) : null}
+      </div>
 
       <div className="window-titlebar-drag" onMouseDown={handleTitlebarMouseDown} />
 
@@ -570,6 +541,7 @@ function WindowTitlebar({ isWindowMaximized }: { isWindowMaximized: boolean }) {
 interface PortDetailProps {
   port: PortDto | null;
   matchedService: ManagedServiceDto | null;
+  scanTimestampLabel: string;
   onClose: () => void;
   onKillPort: (port: number) => void;
   onToggleFavorite: (port: number) => void;
@@ -581,6 +553,7 @@ interface PortDetailProps {
 function PortDetail({
   port,
   matchedService,
+  scanTimestampLabel,
   onClose,
   onKillPort,
   onToggleFavorite,
@@ -598,13 +571,13 @@ function PortDetail({
     );
   }
 
-  const meta = buildPortMeta(port, matchedService);
+  const meta = buildPortMeta(port, matchedService, scanTimestampLabel);
 
   return (
     <div className="detail-stack">
       <div className="detail-header">
         <div>
-          <span className="detail-eyebrow">Port Inspector</span>
+          <span className="detail-eyebrow">{SCREENSHOT_MODE ? "Port Inspector" : "端口详情"}</span>
           <h2>{SCREENSHOT_MODE ? `Port ${port.port} (${formatProtocolLabel(port.protocol)})` : `端口 ${port.port} (${formatProtocolLabel(port.protocol)})`}</h2>
         </div>
 
@@ -623,7 +596,6 @@ function PortDetail({
           <DetailField label="PID:" value={SCREENSHOT_MODE ? (port.pid ?? 0).toLocaleString("en-US") : port.pid === null ? "未检测" : port.pid.toLocaleString("zh-CN")} />
           <DetailField label={SCREENSHOT_MODE ? "Protocol:" : "协议"} value={formatProtocolLabel(port.protocol)} />
           <DetailField label={SCREENSHOT_MODE ? "Listen Address:" : "监听地址"} value={<span className="mono">{port.listen_address}</span>} />
-          {SCREENSHOT_MODE ? null : <DetailField label="关联服务" value={matchedService ? matchedService.name : "未关联"} />}
           <DetailField label={SCREENSHOT_MODE ? "Created:" : "创建时间"} value={meta.created} />
           <DetailField label={SCREENSHOT_MODE ? "User:" : "运行用户"} value={meta.user} />
         </div>
@@ -722,7 +694,7 @@ function ServiceDetail({ service, onStartService, onStopService, onToggleFavorit
     <div className="detail-stack">
       <div className="detail-header">
         <div>
-          <span className="detail-eyebrow">Service Inspector</span>
+          <span className="detail-eyebrow">{SCREENSHOT_MODE ? "Service Inspector" : "服务详情"}</span>
           <h2>{service.name}</h2>
         </div>
       </div>
@@ -780,7 +752,7 @@ function FavoritesDetail({ snapshot }: { snapshot: DashboardSnapshotDto }) {
     <div className="detail-stack">
       <div className="detail-header">
         <div>
-          <span className="detail-eyebrow">Favorites Summary</span>
+          <span className="detail-eyebrow">{SCREENSHOT_MODE ? "Favorites Summary" : "收藏总览"}</span>
           <h2>{SCREENSHOT_MODE ? `${countFavorites(snapshot)} favorite items` : `${countFavorites(snapshot)} 个收藏对象`}</h2>
         </div>
       </div>
@@ -826,9 +798,9 @@ function FavoritesDetail({ snapshot }: { snapshot: DashboardSnapshotDto }) {
   );
 }
 
-function buildPortMeta(port: PortDto, service: ManagedServiceDto | null) {
+function buildPortMeta(port: PortDto, service: ManagedServiceDto | null, scanTimestampLabel: string) {
   const processName = port.process_name?.toLowerCase() ?? "";
-  const createdAt = SCREENSHOT_MODE ? SCREENSHOT_TIMESTAMP : "2025/05/20 09:12:31";
+  const createdAt = SCREENSHOT_MODE ? SCREENSHOT_TIMESTAMP : scanTimestampLabel;
   const signatureLabel = SCREENSHOT_MODE ? "Valid" : "有效";
 
   if (processName.includes("httpd")) {
@@ -903,55 +875,15 @@ function buildPortMeta(port: PortDto, service: ManagedServiceDto | null) {
 
   return {
     created: createdAt,
-    user: service?.kind === "windows_service" ? service.service_name ?? (SCREENSHOT_MODE ? "SYSTEM" : "SYSTEM" ) : SCREENSHOT_MODE ? "Current User" : "当前用户",
+    user: service?.kind === "windows_service" ? service.service_name ?? (SCREENSHOT_MODE ? "SYSTEM" : "系统") : SCREENSHOT_MODE ? "Current User" : "当前用户",
     filePath: `C:\\Program Files\\${service?.name ?? "App"}\\${port.process_name ?? "service"}.exe`,
-    company: service?.name ?? "Local Application",
+    company: service?.name ?? (SCREENSHOT_MODE ? "Local Application" : "本地应用"),
     fileVersion: "1.0.0",
-    description: service?.name ?? "Local process",
+    description: service?.name ?? (SCREENSHOT_MODE ? "Local process" : "本地进程"),
     digitalSignature: port.pid ? signatureLabel : SCREENSHOT_MODE ? "Unknown" : "未知",
     startTime: createdAt,
     workingSet: "24.0 MB",
   };
-}
-
-function createSeedActivity(): ActivityEntry[] {
-  return [
-    {
-      id: "activity-1",
-      title: "监听建立",
-      detail: "端口 80 (TCP) 正在监听，进程为 httpd.exe。",
-      tone: "success",
-      at: "10:15:30",
-    },
-    {
-      id: "activity-2",
-      title: "连接活跃",
-      detail: "端口 5357 (UDP) 进入活跃状态。",
-      tone: "accent",
-      at: "10:15:28",
-    },
-    {
-      id: "activity-3",
-      title: "服务停止",
-      detail: "端口 8080 (TCP) 当前未监听。",
-      tone: "warning",
-      at: "10:15:26",
-    },
-    {
-      id: "activity-4",
-      title: "监听建立",
-      detail: "端口 443 (TCP) 正在监听，进程为 httpd.exe。",
-      tone: "success",
-      at: "10:15:24",
-    },
-    {
-      id: "activity-5",
-      title: "连接活跃",
-      detail: "端口 6379 (TCP) 已建立活动连接。",
-      tone: "accent",
-      at: "10:15:20",
-    },
-  ];
 }
 
 function formatClockLabel(date: Date) {
@@ -961,4 +893,166 @@ function formatClockLabel(date: Date) {
     second: "2-digit",
     hour12: false,
   });
+}
+
+function formatDetailedTimestamp(date: Date) {
+  return date.toLocaleString("zh-CN", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  });
+}
+
+function getSystemInfo(mockRuntime: boolean) {
+  if (SCREENSHOT_MODE) {
+    return SCREENSHOT_SYSTEM_INFO;
+  }
+
+  if (mockRuntime) {
+    return {
+      user: "浏览器预览",
+      details: ["Mock Backend", "前端预览模式", "用于界面联调"],
+      scanLabel: "预览模式",
+    };
+  }
+
+  return {
+    user: "本机桌面",
+    details: ["Tauri 桌面运行时", "实时端口 / 服务数据", "自动轮询 5 秒"],
+    scanLabel: "实时同步",
+  };
+}
+
+type ActivitySeed = Omit<ActivityEntry, "id" | "at">;
+
+function prependActivityEntries(
+  setActivity: Dispatch<SetStateAction<ActivityEntry[]>>,
+  entries: ActivitySeed[],
+  timestampLabel: string,
+) {
+  if (!entries.length) {
+    return;
+  }
+
+  setActivity((current) => [
+    ...entries.map((entry) => ({
+      ...entry,
+      id: crypto.randomUUID(),
+      at: timestampLabel,
+    })),
+    ...current,
+  ].slice(0, MAX_ACTIVITY_ENTRIES));
+}
+
+function buildSnapshotDiffActivity(previous: DashboardSnapshotDto, next: DashboardSnapshotDto): ActivitySeed[] {
+  const entries: ActivitySeed[] = [];
+
+  const previousPorts = new Map(previous.ports.map((port) => [getPortKey(port), port]));
+  const nextPorts = new Map(next.ports.map((port) => [getPortKey(port), port]));
+  const previousServices = new Map(previous.services.map((service) => [service.id, service]));
+  const nextServices = new Map(next.services.map((service) => [service.id, service]));
+
+  for (const [key, port] of nextPorts) {
+    const before = previousPorts.get(key);
+
+    if (!before) {
+      entries.push({
+        title: SCREENSHOT_MODE ? "Port discovered" : "端口新增",
+        detail: SCREENSHOT_MODE
+          ? `Port ${port.port} appeared in the latest snapshot.`
+          : `端口 ${port.port} 已出现在最新快照中。`,
+        tone: portStatusTone(port.status),
+      });
+      continue;
+    }
+
+    if (before.status !== port.status) {
+      entries.push({
+        title: SCREENSHOT_MODE ? "Port state changed" : "端口状态变更",
+        detail: SCREENSHOT_MODE
+          ? `Port ${port.port} changed from ${formatPortStatusLabel(before.status)} to ${formatPortStatusLabel(port.status)}.`
+          : `端口 ${port.port} 由 ${formatPortStatusLabel(before.status)} 变为 ${formatPortStatusLabel(port.status)}。`,
+        tone: portStatusTone(port.status),
+      });
+    }
+
+    if (before.is_favorite !== port.is_favorite) {
+      entries.push({
+        title: SCREENSHOT_MODE ? "Port favorite updated" : "端口收藏变更",
+        detail: SCREENSHOT_MODE
+          ? `Port ${port.port} was ${port.is_favorite ? "added to" : "removed from"} favorites.`
+          : `端口 ${port.port} 已${port.is_favorite ? "加入" : "移出"}收藏。`,
+        tone: "accent",
+      });
+    }
+  }
+
+  for (const [key, port] of previousPorts) {
+    if (!nextPorts.has(key)) {
+      entries.push({
+        title: SCREENSHOT_MODE ? "Port removed" : "端口移除",
+        detail: SCREENSHOT_MODE
+          ? `Port ${port.port} is no longer present in the latest snapshot.`
+          : `端口 ${port.port} 已从最新快照中移除。`,
+        tone: "warning",
+      });
+    }
+  }
+
+  for (const [serviceId, service] of nextServices) {
+    const before = previousServices.get(serviceId);
+
+    if (!before) {
+      entries.push({
+        title: SCREENSHOT_MODE ? "Service discovered" : "服务新增",
+        detail: SCREENSHOT_MODE
+          ? `${service.name} appeared in the latest snapshot.`
+          : `服务 ${service.name} 已进入最新快照。`,
+        tone: serviceStatusTone(service.status),
+      });
+      continue;
+    }
+
+    if (before.status !== service.status) {
+      entries.push({
+        title: SCREENSHOT_MODE ? "Service state changed" : "服务状态变更",
+        detail: SCREENSHOT_MODE
+          ? `${service.name} changed from ${formatServiceStatusLabel(before.status)} to ${formatServiceStatusLabel(service.status)}.`
+          : `服务 ${service.name} 由 ${formatServiceStatusLabel(before.status)} 变为 ${formatServiceStatusLabel(service.status)}。`,
+        tone: serviceStatusTone(service.status),
+      });
+    }
+
+    if (before.is_favorite !== service.is_favorite) {
+      entries.push({
+        title: SCREENSHOT_MODE ? "Service favorite updated" : "服务收藏变更",
+        detail: SCREENSHOT_MODE
+          ? `${service.name} was ${service.is_favorite ? "added to" : "removed from"} favorites.`
+          : `服务 ${service.name} 已${service.is_favorite ? "加入" : "移出"}收藏。`,
+        tone: "accent",
+      });
+    }
+  }
+
+  for (const [serviceId, service] of previousServices) {
+    if (!nextServices.has(serviceId)) {
+      entries.push({
+        title: SCREENSHOT_MODE ? "Service removed" : "服务移除",
+        detail: SCREENSHOT_MODE
+          ? `${service.name} is no longer present in the latest snapshot.`
+          : `服务 ${service.name} 已从最新快照中移除。`,
+        tone: "warning",
+      });
+    }
+  }
+
+  return entries.slice(0, 6);
+}
+
+function getPortKey(port: PortDto) {
+  return `${port.protocol}:${port.port}:${port.listen_address}`;
 }
