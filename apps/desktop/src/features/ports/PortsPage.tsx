@@ -1,5 +1,6 @@
-import { Activity, ChevronDown, ChevronLeft, ChevronRight, CircleDot, Database, ExternalLink, FileText, Globe, Lock, Monitor, MoreHorizontal, Network, Play, RefreshCcw, Settings, Shield, Square, Star, Trash2, type LucideIcon } from "lucide-react";
+import { Activity, ChevronDown, ChevronLeft, ChevronRight, CircleDot, Database, ExternalLink, FileText, Globe, Lock, Monitor, MoreHorizontal, Network, Play, RefreshCcw, Shield, Square, Star, Trash2, type LucideIcon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { ScanCard } from "../../components/ScanCard";
 import { StatusPill } from "../../components/StatusPill";
 import { favoritePorts, findService, getPortRowKey } from "../../lib/dashboard";
 import { formatOptionalText, formatPortStatusLabel, formatProtocolLabel, portStatusTone } from "../../lib/presentation";
@@ -121,19 +122,13 @@ export function PortsPage({
           </article>
         ))}
 
-        <article className="scan-card">
-          <button type="button" className="scan-refresh" onClick={onRefresh} disabled={isRefreshing}>
-            <RefreshCcw size={15} />
-            <span>{SCREENSHOT_MODE ? (isRefreshing ? "Refreshing..." : "Refresh") : isRefreshing ? "刷新中" : "立即刷新"}</span>
-          </button>
-          <div className="metric-card-meta scan-card-meta">
-            <span>{SCREENSHOT_MODE ? `Last scan: ${lastScanLabel}` : `最近扫描 ${lastScanLabel}`}</span>
-            <span className="scan-card-meta-row">
-              <Settings size={12} />
-              <span>{SCREENSHOT_MODE ? `Auto-refresh: ${SCREENSHOT_AUTO_REFRESH_LABEL}` : "自动轮询 5 秒"}</span>
-            </span>
-          </div>
-        </article>
+        <ScanCard
+          isRefreshing={isRefreshing}
+          lastScanLabel={lastScanLabel}
+          onRefresh={onRefresh}
+          refreshLabel={SCREENSHOT_MODE ? (isRefreshing ? "Refreshing..." : "Refresh") : isRefreshing ? "刷新中" : "立即刷新"}
+          pollingLabel={SCREENSHOT_MODE ? `Auto-refresh: ${SCREENSHOT_AUTO_REFRESH_LABEL}` : "自动轮询 5 秒"}
+        />
       </section>
 
       <section className="panel panel-table">

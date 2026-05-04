@@ -1,5 +1,5 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { Bookmark, CircleDot, Copy, LayoutGrid, type LucideIcon, Minus, Network, Play, Server, Settings, Shield, Square, Star, TriangleAlert, X } from "lucide-react";
+import { Bookmark, CircleDot, Copy, LayoutGrid, type LucideIcon, Minus, Network, Play, Server, Square, Star, TriangleAlert, X } from "lucide-react";
 import { type Dispatch, type ReactNode, type SetStateAction, useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { StatusPill } from "./components/StatusPill";
@@ -10,7 +10,7 @@ import { deleteManagedService, getDashboardSnapshot, killProcessByPort, saveMana
 import { countFavorites, countListeningPorts, countRunningServices, findPortByRowKey, findService, getPortRowKey } from "./lib/dashboard";
 import { isMockRuntime } from "./lib/mockBackend";
 import { formatOptionalText, formatPortList, formatPortStatusLabel, formatProtocolLabel, formatServiceKindLabel, formatServiceStatusLabel, portStatusTone, serviceStatusTone } from "./lib/presentation";
-import { isScreenshotMode, SCREENSHOT_ACTIVITY, SCREENSHOT_LAST_SCAN_LABEL, SCREENSHOT_SYSTEM_INFO, SCREENSHOT_TIMESTAMP } from "./lib/screenshotMode";
+import { isScreenshotMode, SCREENSHOT_ACTIVITY, SCREENSHOT_LAST_SCAN_LABEL, SCREENSHOT_TIMESTAMP } from "./lib/screenshotMode";
 import type { ActivityEntry, ActivityTone, DashboardSnapshotDto, ManagedServiceDraftDto, ManagedServiceDto, PortDto } from "./lib/types";
 
 const DASHBOARD_QUERY_KEY = ["dashboard"];
@@ -311,8 +311,6 @@ export function App() {
     setActivity([]);
   };
 
-  const systemInfo = getSystemInfo(isMockRuntime());
-
   return (
     <div className={`app-root ${REFERENCE_LAYOUT_MODE ? "screenshot-mode" : ""}`}>
       <div className="app-scale-frame">
@@ -339,22 +337,6 @@ export function App() {
             ))}
           </nav>
 
-          <div className="sidebar-footer">
-            <div className="settings-card">
-              <Settings size={16} />
-              <div className="settings-card-copy">
-                <span>{SCREENSHOT_MODE ? "Settings" : "设置"}</span>
-              </div>
-            </div>
-
-            <div className="sidebar-footer-meta">
-              <span>v1.3.0</span>
-              <span className="sidebar-footer-status">
-                <span className="sidebar-footer-dot" />
-                {SCREENSHOT_MODE ? "Up to date" : "已是最新"}
-              </span>
-            </div>
-          </div>
           </aside>
 
           <main className="workspace">
@@ -434,28 +416,6 @@ export function App() {
             </section>
           </aside>
 
-          <footer className="status-bar">
-            <div className="status-bar-left">
-              <Shield size={14} />
-              <span>{systemInfo.user}</span>
-              <span className="status-bar-divider">|</span>
-            </div>
-
-            <div className="status-bar-center">
-              {systemInfo.details.map((item, index) => (
-                <span key={item}>
-                  {index > 0 ? <span className="status-bar-divider">|</span> : null}
-                  {item}
-                </span>
-              ))}
-            </div>
-
-            <div className="status-bar-right">
-              <Network size={14} />
-              <span className="status-bar-dot" />
-              <span>{systemInfo.scanLabel}</span>
-            </div>
-          </footer>
         </div>
       </div>
     </div>
@@ -905,26 +865,6 @@ function formatDetailedTimestamp(date: Date) {
     second: "2-digit",
     hour12: false,
   });
-}
-
-function getSystemInfo(mockRuntime: boolean) {
-  if (SCREENSHOT_MODE) {
-    return SCREENSHOT_SYSTEM_INFO;
-  }
-
-  if (mockRuntime) {
-    return {
-      user: "浏览器预览",
-      details: ["Mock Backend", "前端预览模式", "用于界面联调"],
-      scanLabel: "预览模式",
-    };
-  }
-
-  return {
-    user: "本机桌面",
-    details: ["Tauri 桌面运行时", "实时端口 / 服务数据", "自动轮询 5 秒"],
-    scanLabel: "实时同步",
-  };
 }
 
 type ActivitySeed = Omit<ActivityEntry, "id" | "at">;

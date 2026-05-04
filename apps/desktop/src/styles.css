@@ -363,60 +363,6 @@ a {
   color: rgba(231, 239, 246, 0.92);
 }
 
-.sidebar-footer {
-  margin-top: auto;
-  display: grid;
-  gap: 6px;
-  padding-top: 10px;
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.settings-card {
-  width: 100%;
-  border: 0;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--text);
-  padding: 1px 0;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  text-align: left;
-}
-
-.settings-card-copy {
-  display: grid;
-  gap: 2px;
-}
-
-.settings-card-copy span {
-  font-weight: 650;
-  font-size: 0.88rem;
-}
-
-.sidebar-footer-meta {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  color: var(--muted);
-  font-size: 0.69rem;
-}
-
-.sidebar-footer-status {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.sidebar-footer-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 999px;
-  background: var(--success);
-  box-shadow: 0 0 0 3px rgba(129, 213, 111, 0.14);
-}
-
 .workspace {
   grid-row: 1;
   height: 100%;
@@ -605,27 +551,73 @@ a {
 
 .scan-card {
   padding: 14px 16px 12px;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  gap: 10px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px 18px;
   min-height: 108px;
 }
 
+.scan-card-main {
+  min-width: 0;
+  display: grid;
+  align-content: center;
+  gap: 8px;
+}
+
+.scan-card-primary {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.scan-card-label {
+  color: #9fb0bd;
+  font-size: 0.76rem;
+  font-weight: 540;
+  line-height: 1.15;
+}
+
+.scan-card-time {
+  color: var(--text);
+  font-size: 1.08rem;
+  font-weight: 680;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+.scan-card-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.2;
+}
+
+.scan-card-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
 .scan-refresh {
-  align-self: stretch;
   border: 1px solid var(--border);
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.03);
   color: var(--text);
-  padding: 11px 14px;
+  padding: 11px 15px;
   min-height: 44px;
+  min-width: 116px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
   font-size: 0.9rem;
   font-weight: 620;
+  white-space: nowrap;
   transition:
     background 140ms ease,
     border-color 140ms ease,
@@ -637,19 +629,12 @@ a {
   border-color: rgba(255, 255, 255, 0.14);
 }
 
-.metric-card-meta,
-.scan-card-meta {
+.metric-card-meta {
   display: grid;
   gap: 3px;
   color: var(--muted);
   font-size: 0.75rem;
   line-height: 1.25;
-}
-
-.scan-card-meta-row {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
 }
 
 .panel {
@@ -1396,102 +1381,47 @@ a {
   font-size: 1rem;
 }
 
-.status-bar {
-  grid-column: 1 / -1;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  padding: 8px 14px;
-  border: 0;
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: 0;
-  background: rgba(11, 15, 20, 0.96);
-  box-shadow: none;
-  color: var(--muted);
-  font-size: 0.76rem;
-}
-
-.status-bar-left,
-.status-bar-right {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  white-space: nowrap;
-}
-
-.status-bar-center {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  flex: 1;
-  flex-wrap: wrap;
-}
-
-.status-bar-divider {
-  color: rgba(255, 255, 255, 0.14);
-}
-
-.status-bar-right {
-  color: #b8f3ba;
-}
-
-.status-bar-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 999px;
-  background: var(--success);
-  box-shadow: 0 0 0 4px rgba(129, 213, 111, 0.14);
-}
-
 .status-pill {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 10px;
-  border-radius: 999px;
-  font-size: 0.74rem;
-  font-weight: 620;
-  border: 1px solid transparent;
+  gap: 7px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  font-size: 0.8rem;
+  font-weight: 560;
+  line-height: 1.2;
+  white-space: nowrap;
 }
 
 .status-pill-dot {
-  width: 7px;
-  height: 7px;
+  width: 8px;
+  height: 8px;
   border-radius: 999px;
   background: currentColor;
-  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.04);
+  box-shadow: none;
+  flex: 0 0 auto;
 }
 
 .status-pill-neutral {
-  color: #c9d5de;
-  background: rgba(255, 255, 255, 0.03);
-  border-color: rgba(255, 255, 255, 0.08);
+  color: #b7c5d2;
 }
 
 .status-pill-success {
-  color: #d8f6d2;
-  background: rgba(129, 213, 111, 0.11);
-  border-color: rgba(129, 213, 111, 0.18);
+  color: #cfeebf;
 }
 
 .status-pill-warning {
-  color: #ffe2b1;
-  background: rgba(241, 178, 79, 0.12);
-  border-color: rgba(241, 178, 79, 0.2);
+  color: #f0cb86;
 }
 
 .status-pill-danger {
-  color: #ffd2cc;
-  background: rgba(225, 107, 91, 0.12);
-  border-color: rgba(225, 107, 91, 0.2);
+  color: #f0a59b;
 }
 
 .status-pill-accent {
-  color: #d8f5ff;
-  background: rgba(74, 176, 255, 0.12);
-  border-color: rgba(74, 176, 255, 0.2);
+  color: #8fdcff;
 }
 
 .primary-button,
@@ -1745,15 +1675,6 @@ a {
   font-weight: 560;
 }
 
-.screenshot-mode .sidebar-footer {
-  padding: 0 4px;
-  gap: 10px;
-}
-
-.screenshot-mode .settings-card {
-  min-height: 38px;
-}
-
 .screenshot-mode .workspace {
   padding: 12px 12px 0;
 }
@@ -1812,24 +1733,31 @@ a {
 .screenshot-mode .scan-card {
   min-height: 112px;
   padding: 15px 16px 14px;
+  gap: 12px 16px;
+}
+
+.screenshot-mode .scan-card-main {
+  gap: 9px;
+}
+
+.screenshot-mode .scan-card-label {
+  font-size: 0.78rem;
+}
+
+.screenshot-mode .scan-card-time {
+  font-size: 1.1rem;
+}
+
+.screenshot-mode .scan-card-secondary {
+  font-size: 0.82rem;
 }
 
 .screenshot-mode .scan-refresh {
-  align-self: flex-end;
-  min-width: 96px;
+  min-width: 110px;
   min-height: 38px;
   padding: 0 14px;
   border-radius: 7px;
   font-size: 0.9rem;
-}
-
-.screenshot-mode .metric-card-meta {
-  align-items: flex-end;
-  font-size: 0.78rem;
-}
-
-.screenshot-mode .scan-card-meta-row {
-  justify-content: flex-end;
 }
 
 .screenshot-mode .panel-table {
@@ -1925,10 +1853,10 @@ a {
 
 .screenshot-mode .status-pill {
   gap: 7px;
-  padding: 4px 11px;
-  border-radius: 6px;
-  font-size: 0.77rem;
-  font-weight: 520;
+  padding: 0;
+  border-radius: 0;
+  font-size: 0.8rem;
+  font-weight: 540;
 }
 
 .screenshot-mode .status-pill-dot {
@@ -2108,26 +2036,6 @@ a {
   font-size: 0.92rem;
 }
 
-.screenshot-mode .status-bar {
-  min-height: 56px;
-  padding: 0 18px;
-  font-size: 0.82rem;
-}
-
-.screenshot-mode .status-bar-center {
-  gap: 14px;
-}
-
-.screenshot-mode .status-bar-right {
-  color: #dce7ee;
-}
-
-.screenshot-mode .status-bar-dot {
-  width: 8px;
-  height: 8px;
-  box-shadow: none;
-}
-
 @media (max-width: 1320px) {
   .app-shell {
     grid-template-columns: 170px minmax(0, 1fr) 320px;
@@ -2181,9 +2089,6 @@ a {
     overflow: visible;
   }
 
-  .status-bar {
-    grid-column: auto;
-  }
 }
 
 @media (max-width: 900px) {
@@ -2208,13 +2113,13 @@ a {
     align-items: flex-start;
   }
 
-  .status-bar {
-    flex-direction: column;
-    align-items: flex-start;
+  .scan-card {
+    grid-template-columns: 1fr;
+    gap: 12px;
   }
 
-  .status-bar-center {
-    justify-content: flex-start;
+  .scan-card-actions {
+    justify-content: flex-end;
   }
 
   .data-table {

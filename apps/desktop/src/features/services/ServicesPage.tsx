@@ -1,5 +1,6 @@
-import { Play, Plus, RefreshCcw, Square, Star, Trash2, TriangleAlert, Zap, type LucideIcon } from "lucide-react";
+import { Play, Plus, Square, Star, Trash2, TriangleAlert, Zap, type LucideIcon } from "lucide-react";
 import { useMemo, useState } from "react";
+import { ScanCard } from "../../components/ScanCard";
 import { StatusPill } from "../../components/StatusPill";
 import { formatOptionalText, formatPortList, formatServiceKindLabel, formatServiceStatusLabel, serviceStatusTone } from "../../lib/presentation";
 import type { DashboardSnapshotDto, ManagedServiceDraftDto, ManagedServiceDto, ServiceKind } from "../../lib/types";
@@ -128,16 +129,13 @@ export function ServicesPage({
           </article>
         ))}
 
-        <article className="scan-card">
-          <button type="button" className="scan-refresh" onClick={onRefresh} disabled={isRefreshing}>
-            <RefreshCcw size={15} />
-            <span>{isRefreshing ? "刷新中" : "同步目录"}</span>
-          </button>
-          <div className="metric-card-meta">
-            <span>{`最近扫描 ${lastScanLabel}`}</span>
-            <span>自动轮询 5 秒</span>
-          </div>
-        </article>
+        <ScanCard
+          isRefreshing={isRefreshing}
+          lastScanLabel={lastScanLabel}
+          onRefresh={onRefresh}
+          refreshLabel={isRefreshing ? "刷新中" : "同步目录"}
+          pollingLabel="自动轮询 5 秒"
+        />
       </section>
 
       <section className="panel panel-table">

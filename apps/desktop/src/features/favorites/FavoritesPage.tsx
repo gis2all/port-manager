@@ -1,5 +1,6 @@
-import { Bookmark, Play, RefreshCcw, Server, Square, Star, TriangleAlert, Zap, type LucideIcon } from "lucide-react";
+import { Bookmark, Play, Server, Square, Star, TriangleAlert, Zap, type LucideIcon } from "lucide-react";
 import { useMemo } from "react";
+import { ScanCard } from "../../components/ScanCard";
 import { StatusPill } from "../../components/StatusPill";
 import { favoritePorts, favoriteServices, getPortRowKey } from "../../lib/dashboard";
 import { formatOptionalText, formatPortList, formatPortStatusLabel, formatProtocolLabel, formatServiceKindLabel, formatServiceStatusLabel, portStatusTone, serviceStatusTone } from "../../lib/presentation";
@@ -133,16 +134,13 @@ export function FavoritesPage({
           </article>
         ))}
 
-        <article className="scan-card">
-          <button type="button" className="scan-refresh" onClick={onRefresh} disabled={isRefreshing}>
-            <RefreshCcw size={15} />
-            <span>{isRefreshing ? "刷新中" : "同步收藏"}</span>
-          </button>
-          <div className="metric-card-meta">
-            <span>{`最近扫描 ${lastScanLabel}`}</span>
-            <span>自动轮询 5 秒</span>
-          </div>
-        </article>
+        <ScanCard
+          isRefreshing={isRefreshing}
+          lastScanLabel={lastScanLabel}
+          onRefresh={onRefresh}
+          refreshLabel={isRefreshing ? "刷新中" : "同步收藏"}
+          pollingLabel="自动轮询 5 秒"
+        />
       </section>
 
       <section className="panel panel-table">
