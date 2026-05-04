@@ -11,7 +11,7 @@ interface FavoritesPageProps {
   onSelectPort: (port: PortDto) => void;
   onSelectService: (serviceId: string) => void;
   onRefresh: () => void;
-  onTogglePortFavorite: (port: number) => void;
+  onTogglePortFavorite: (port: PortDto) => void;
   onToggleServiceFavorite: (serviceId: string) => void;
   onKillPort: (port: number) => void;
   onStartService: (serviceId: string) => void;
@@ -235,7 +235,7 @@ export function FavoritesPage({
                         className="icon-button favorite-toggle is-active"
                         onClick={(event) => {
                           event.stopPropagation();
-                          onTogglePortFavorite(row.port.port);
+                          onTogglePortFavorite(row.port);
                         }}
                         aria-label="取消端口收藏"
                       >
@@ -348,12 +348,12 @@ export function FavoritesPage({
             <StatusPill label={`${ports.length} 个端口`} tone="accent" />
           </header>
 
-          <div className="favorites-list">
+          <div className="favorites-list favorite-port-list">
             {ports.length ? (
               ports.map((port) => (
                 <div
                   key={getPortRowKey(port)}
-                  className="favorite-row"
+                  className="favorite-row favorite-port-row"
                   role="button"
                   tabIndex={0}
                   onClick={() => onSelectPort(port)}

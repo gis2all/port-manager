@@ -1,6 +1,7 @@
 import { Play, Plus, Square, Star, Trash2, TriangleAlert, Zap, type LucideIcon } from "lucide-react";
 import { useMemo, useState } from "react";
 import { ScanCard } from "../../components/ScanCard";
+import { SelectMenu, type SelectOption } from "../../components/SelectMenu";
 import { StatusPill } from "../../components/StatusPill";
 import { formatOptionalText, formatPortList, formatServiceKindLabel, formatServiceStatusLabel, serviceStatusTone } from "../../lib/presentation";
 import type { DashboardSnapshotDto, ManagedServiceDraftDto, ManagedServiceDto, ServiceKind } from "../../lib/types";
@@ -36,6 +37,11 @@ interface SummaryMetricCard {
   icon: LucideIcon;
   toneClass: string;
 }
+
+const SERVICE_KIND_OPTIONS: ReadonlyArray<SelectOption<ServiceKind>> = [
+  { value: "command", label: "命令服务" },
+  { value: "windows_service", label: "Windows 服务" },
+];
 
 function createEmptyServiceForm(): ServiceFormState {
   return {
@@ -112,7 +118,7 @@ export function ServicesPage({
   ];
 
   return (
-    <div className="console-page">
+    <div className="console-page console-page-services">
       <section className="summary-strip">
         {summaryCards.map(({ key, label, value, icon: Icon, toneClass }) => (
           <article key={key} className={`metric-card ${toneClass}`}>
@@ -320,10 +326,14 @@ export function ServicesPage({
 
               <label className="field">
                 <span>服务类型</span>
-                <select value={form.kind} onChange={(event) => setForm((current) => ({ ...current, kind: event.target.value as ServiceKind }))}>
-                  <option value="command">命令服务</option>
-                  <option value="windows_service">Windows 服务</option>
-                </select>
+                <SelectMenu
+                  value={form.kind}
+                  options={SERVICE_KIND_OPTIONS}
+                  onChange={(value) => setForm((current) => ({ ...current, kind: value }))}
+                  ariaLabel="选择服务类型"
+                  className="field-select-menu"
+                  triggerClassName="field-select-trigger"
+                />
               </label>
 
               {form.kind === "command" ? (

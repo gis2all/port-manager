@@ -1,4 +1,5 @@
 import { isTauri } from "@tauri-apps/api/core";
+import { getPortRowKey } from "./dashboard";
 import type { DashboardSnapshotDto, ManagedServiceDraftDto, ManagedServiceDto, PortDto, PortStatus } from "./types";
 
 interface MockState {
@@ -12,10 +13,10 @@ const fillerProcessNames: Record<Exclude<PortStatus, "unknown">, string[]> = {
 };
 
 const state: MockState = {
-  snapshot: createScreenshotSnapshot(),
+  snapshot: createMockSnapshot(),
 };
 
-function createScreenshotSnapshot(): DashboardSnapshotDto {
+function createMockSnapshot(): DashboardSnapshotDto {
   const apacheService = createService({
     id: "11111111-1111-4111-8111-111111111111",
     name: "apache",
@@ -266,13 +267,17 @@ export async function killProcessByPort(port: number): Promise<number> {
   return pid;
 }
 
-export async function togglePortFavorite(port: number): Promise<void> {
-  const record = state.snapshot.ports.find((entry) => entry.port === port);
+export async function togglePortFavorite(rowKey: string, port: number, isFavorite: boolean): Promise<void> {
+  const record = state.snapshot.ports.find((entry) => getPortRowKey(entry) === rowKey);
   if (!record) {
-    throw new Error(`port ${port} not found`);
+    throw new Error(`port row ${rowKey} not found`);
   }
 
-  record.is_favorite = !record.is_favorite;
+  if (record.port !== port) {
+    throw new Error(`port row ${rowKey} does not match port ${port}`);
+  }
+
+  record.is_favorite = isFavorite;
 }
 
 export async function toggleServiceFavorite(serviceId: string): Promise<void> {

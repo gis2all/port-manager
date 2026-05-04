@@ -1,13 +1,11 @@
-import { Activity, ChevronDown, ChevronLeft, ChevronRight, CircleDot, Database, ExternalLink, FileText, Globe, Lock, Monitor, MoreHorizontal, Network, Play, RefreshCcw, Shield, Square, Star, Trash2, type LucideIcon } from "lucide-react";
+import { Activity, ChevronLeft, ChevronRight, CircleDot, Database, FileText, Globe, Lock, Monitor, MoreHorizontal, Network, Play, RefreshCcw, Shield, Square, Star, Trash2, type LucideIcon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { ScanCard } from "../../components/ScanCard";
+import { SelectMenu } from "../../components/SelectMenu";
 import { StatusPill } from "../../components/StatusPill";
 import { favoritePorts, findService, getPortRowKey } from "../../lib/dashboard";
 import { formatOptionalText, formatPortStatusLabel, formatProtocolLabel, portStatusTone } from "../../lib/presentation";
-import { isScreenshotMode, SCREENSHOT_AUTO_REFRESH_LABEL } from "../../lib/screenshotMode";
 import type { ActivityEntry, ActivityTone, DashboardSnapshotDto, PortDto } from "../../lib/types";
-
-const SCREENSHOT_MODE = isScreenshotMode();
 
 interface PortsPageProps {
   snapshot: DashboardSnapshotDto;
@@ -15,7 +13,7 @@ interface PortsPageProps {
   selectedPortKey: string | null;
   onSelectPort: (port: PortDto) => void;
   onRefresh: () => void;
-  onTogglePortFavorite: (port: number) => void;
+  onTogglePortFavorite: (port: PortDto) => void;
   onKillPort: (port: number) => void;
   onStartService: (serviceId: string) => void;
   onOpenFavorites: () => void;
@@ -25,37 +23,21 @@ interface PortsPageProps {
 }
 
 const PAGE_SIZE = 9;
-const ACTIVITY_FILTERS: Array<{ label: string; value: "all" | ActivityTone }> = SCREENSHOT_MODE
-  ? [
-      { label: "All Events", value: "all" },
-      { label: "Success", value: "success" },
-      { label: "Warning", value: "warning" },
-      { label: "Error", value: "danger" },
-      { label: "Neutral", value: "neutral" },
-      { label: "Active", value: "accent" },
-    ]
-  : [
-      { label: "全部事件", value: "all" },
-      { label: "成功", value: "success" },
-      { label: "提醒", value: "warning" },
-      { label: "异常", value: "danger" },
-      { label: "普通", value: "neutral" },
-      { label: "活跃", value: "accent" },
-    ];
+const ACTIVITY_FILTERS: Array<{ label: string; value: "all" | ActivityTone }> = [
+  { label: "全部事件", value: "all" },
+  { label: "成功", value: "success" },
+  { label: "提醒", value: "warning" },
+  { label: "异常", value: "danger" },
+  { label: "普通", value: "neutral" },
+  { label: "活跃", value: "accent" },
+];
 
-const SUMMARY_COPY = SCREENSHOT_MODE
-  ? [
-      { key: "total", label: "Total Ports", caption: "All scanned", toneClass: "metric-card-accent", icon: Network },
-      { key: "listening", label: "Listening", caption: "Active & listening", toneClass: "metric-card-success", icon: CircleDot },
-      { key: "active", label: "Active", caption: "Established connections", toneClass: "metric-card-accent", icon: Activity },
-      { key: "closed", label: "Closed", caption: "Not listening", toneClass: "metric-card-warning", icon: Shield },
-    ]
-  : [
-      { key: "total", label: "端口总数", caption: "已扫描端口", toneClass: "metric-card-accent", icon: Network },
-      { key: "listening", label: "监听中", caption: "活跃与监听", toneClass: "metric-card-success", icon: CircleDot },
-      { key: "active", label: "活跃连接", caption: "已建立连接", toneClass: "metric-card-accent", icon: Activity },
-      { key: "closed", label: "已关闭", caption: "未在监听", toneClass: "metric-card-danger", icon: Shield },
-    ];
+const SUMMARY_COPY = [
+  { key: "total", label: "端口总数", caption: "已扫描端口", toneClass: "metric-card-accent", icon: Network },
+  { key: "listening", label: "监听中", caption: "活跃与监听", toneClass: "metric-card-success", icon: CircleDot },
+  { key: "active", label: "活跃连接", caption: "已建立连接", toneClass: "metric-card-accent", icon: Activity },
+  { key: "closed", label: "已关闭", caption: "未在监听", toneClass: "metric-card-danger", icon: Shield },
+];
 
 interface SummaryMetricCard {
   key: string;
@@ -92,7 +74,7 @@ export function PortsPage({
   const currentPage = Math.min(page, totalPages);
   const startIndex = (currentPage - 1) * PAGE_SIZE;
   const pagePorts = snapshot.ports.slice(startIndex, startIndex + PAGE_SIZE);
-  const favoritePortRows = favoritePorts(snapshot).slice(0, 3);
+  const favoritePortRows = favoritePorts(snapshot);
   const filteredActivity = activityFilter === "all" ? activity : activity.filter((entry) => entry.tone === activityFilter);
   const visibleActivity = filteredActivity.slice(0, 5);
   const summaryCards: SummaryMetricCard[] = SUMMARY_COPY.map((card) => ({
@@ -125,8 +107,8 @@ export function PortsPage({
           isRefreshing={isRefreshing}
           lastScanLabel={lastScanLabel}
           onRefresh={onRefresh}
-          refreshLabel={SCREENSHOT_MODE ? (isRefreshing ? "Refreshing..." : "Refresh") : isRefreshing ? "刷新中" : "立即刷新"}
-          pollingLabel={SCREENSHOT_MODE ? `Auto-refresh: ${SCREENSHOT_AUTO_REFRESH_LABEL}` : "自动轮询 5 秒"}
+          refreshLabel={isRefreshing ? "刷新中" : "立即刷新"}
+          pollingLabel="自动轮询 5 秒"
         />
       </section>
 
@@ -145,24 +127,14 @@ export function PortsPage({
             </colgroup>
             <thead>
               <tr>
-                <th>
-                  <span className="table-header-label">
-                    <span>{SCREENSHOT_MODE ? "Port" : "端口"}</span>
-                    <ChevronDown size={10} className="table-sort-icon" />
-                  </span>
-                </th>
-                <th>{SCREENSHOT_MODE ? "Protocol" : "协议"}</th>
+                <th>{"端口"}</th>
+                <th>{"协议"}</th>
                 <th>PID</th>
-                <th>{SCREENSHOT_MODE ? "Process" : "进程 / 服务"}</th>
-                <th>
-                  <span className="table-header-label">
-                    <span>{SCREENSHOT_MODE ? "Listen Address" : "监听地址"}</span>
-                    <ChevronDown size={10} className="table-sort-icon" />
-                  </span>
-                </th>
-                <th>{SCREENSHOT_MODE ? "Status" : "状态"}</th>
-                <th>{SCREENSHOT_MODE ? "Favorite" : "收藏"}</th>
-                <th>{SCREENSHOT_MODE ? "Actions" : "动作"}</th>
+                <th>{"进程 / 服务"}</th>
+                <th>{"监听地址"}</th>
+                <th>{"状态"}</th>
+                <th>{"收藏"}</th>
+                <th>{"动作"}</th>
               </tr>
             </thead>
             <tbody>
@@ -173,9 +145,7 @@ export function PortsPage({
                 const canStartService = Boolean(service && port.status === "closed" && service.status !== "running" && service.status !== "starting");
                 const processGlyph = getProcessGlyph(port, service);
                 const ProcessIcon = processGlyph.icon;
-                const pidLabel = SCREENSHOT_MODE
-                  ? (port.pid ?? 0).toLocaleString("en-US")
-                  : port.pid === null
+                const pidLabel = port.pid === null
                     ? "未检"
                     : port.pid.toLocaleString("zh-CN");
 
@@ -196,7 +166,7 @@ export function PortsPage({
                           <ProcessIcon size={12} strokeWidth={2.1} />
                         </div>
                         <div className="cell-stack">
-                          <span className="process-name">{formatOptionalText(port.process_name, SCREENSHOT_MODE ? "[No Process]" : "未检测到进程")}</span>
+                          <span className="process-name">{formatOptionalText(port.process_name, "未检测到进程")}</span>
                         </div>
                       </div>
                     </td>
@@ -208,11 +178,11 @@ export function PortsPage({
                       <button
                         type="button"
                         className={`table-favorite-button ${port.is_favorite ? "is-active" : ""}`}
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          onTogglePortFavorite(port.port);
-                        }}
-                        aria-label={SCREENSHOT_MODE ? "Toggle port favorite" : "切换端口收藏"}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            onTogglePortFavorite(port);
+                          }}
+                        aria-label={"切换端口收藏"}
                       >
                         <Star size={14} fill={port.is_favorite ? "currentColor" : "none"} />
                       </button>
@@ -227,7 +197,7 @@ export function PortsPage({
                               event.stopPropagation();
                               onStartService(service.id);
                             }}
-                            aria-label={SCREENSHOT_MODE ? "Start related service" : "启动关联服务"}
+                            aria-label={"启动关联服务"}
                           >
                             <Play size={13} />
                           </button>
@@ -240,7 +210,7 @@ export function PortsPage({
                             event.stopPropagation();
                             onSelectPort(port);
                           }}
-                          aria-label={SCREENSHOT_MODE ? "More actions" : "更多操作"}
+                          aria-label={"更多操作"}
                         >
                           <MoreHorizontal size={14} />
                         </button>
@@ -255,9 +225,7 @@ export function PortsPage({
 
         <div className="table-footer">
           <div className="table-footer-caption">
-            {SCREENSHOT_MODE
-              ? `Showing ${totalPorts ? startIndex + 1 : 0} to ${Math.min(startIndex + PAGE_SIZE, totalPorts)} of ${totalPorts} ports`
-              : `显示 ${totalPorts ? startIndex + 1 : 0} - ${Math.min(startIndex + PAGE_SIZE, totalPorts)} / ${totalPorts} 条端口记录`}
+            {`显示 ${totalPorts ? startIndex + 1 : 0} - ${Math.min(startIndex + PAGE_SIZE, totalPorts)} / ${totalPorts} 条端口记录`}
           </div>
 
           <div className="pagination">
@@ -293,12 +261,12 @@ export function PortsPage({
             <div>
               <h2 className="panel-title-with-icon">
                 <Star size={14} />
-                <span>{SCREENSHOT_MODE ? `Favorites (${favoritePortRows.length})` : `重点端口 (${favoritePortRows.length})`}</span>
+                <span>{`重点端口 (${favoritePortRows.length})`}</span>
               </h2>
             </div>
           </header>
 
-          <div className="favorites-list">
+          <div className="favorites-list favorite-port-list">
             {favoritePortRows.length ? (
               favoritePortRows.map((port) => {
                 const service = port.matched_service_id ? serviceById.get(port.matched_service_id) ?? null : null;
@@ -306,7 +274,7 @@ export function PortsPage({
                 return (
                   <div
                     key={getPortRowKey(port)}
-                    className="favorite-row"
+                    className="favorite-row favorite-port-row"
                     role="button"
                     tabIndex={0}
                     onClick={() => onSelectPort(port)}
@@ -320,9 +288,9 @@ export function PortsPage({
                     <div className="favorite-row-main">
                       <div className="favorite-row-title">
                         <Star size={14} fill="currentColor" />
-                        <span>{SCREENSHOT_MODE ? `${port.port} / ${formatProtocolLabel(port.protocol)}` : `端口 ${port.port} · ${formatProtocolLabel(port.protocol)}`}</span>
+                        <span>{`端口 ${port.port} · ${formatProtocolLabel(port.protocol)}`}</span>
                       </div>
-                      <span className="favorite-row-process">{formatOptionalText(port.process_name, service?.name ?? (SCREENSHOT_MODE ? "[No Process]" : "未检测到进程"))}</span>
+                      <span className="favorite-row-process">{formatOptionalText(port.process_name, service?.name ?? ("未检测到进程"))}</span>
                     </div>
                     <div className="favorite-row-meta mono">{port.listen_address}</div>
                     <StatusPill label={formatPortStatusLabel(port.status)} tone={portStatusTone(port.status)} />
@@ -331,9 +299,9 @@ export function PortsPage({
                       className="favorite-row-action"
                       onClick={(event) => {
                         event.stopPropagation();
-                        onTogglePortFavorite(port.port);
+                        onTogglePortFavorite(port);
                       }}
-                      aria-label={SCREENSHOT_MODE ? "Remove favorite port" : "取消端口收藏"}
+                      aria-label={"取消端口收藏"}
                     >
                       <Trash2 size={13} />
                     </button>
@@ -341,12 +309,12 @@ export function PortsPage({
                 );
               })
             ) : (
-              <div className="empty-state">{SCREENSHOT_MODE ? "No favorite ports yet." : "还没有收藏端口。"}</div>
+              <div className="empty-state">{"还没有收藏端口。"}</div>
             )}
           </div>
 
           <button type="button" className="panel-link" onClick={onOpenFavorites}>
-            {SCREENSHOT_MODE ? "Manage Favorites" : "查看全部收藏"}
+            {"查看全部收藏"}
             <ChevronRight size={14} />
           </button>
         </article>
@@ -356,21 +324,22 @@ export function PortsPage({
             <div>
               <h2 className="panel-title-with-icon">
                 <Activity size={14} />
-                <span>{SCREENSHOT_MODE ? "Activity Log" : "活动日志"}</span>
+                <span>{"活动日志"}</span>
               </h2>
             </div>
 
             <div className="activity-toolbar">
               <label className="activity-filter">
-                <select value={activityFilter} onChange={(event) => setActivityFilter(event.target.value as "all" | ActivityTone)}>
-                  {ACTIVITY_FILTERS.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
+                <SelectMenu
+                  value={activityFilter}
+                  options={ACTIVITY_FILTERS}
+                  onChange={setActivityFilter}
+                  ariaLabel={"筛选活动事件"}
+                  className="activity-filter-menu"
+                  triggerClassName="activity-filter-trigger"
+                />
               </label>
-              <button type="button" className="icon-button" onClick={onClearActivity} aria-label={SCREENSHOT_MODE ? "Clear activity log" : "清空活动日志"}>
+              <button type="button" className="icon-button" onClick={onClearActivity} aria-label={"清空活动日志"}>
                 <Trash2 size={12} />
               </button>
             </div>
@@ -391,13 +360,13 @@ export function PortsPage({
                 </article>
               ))
             ) : (
-              <div className="empty-state">{SCREENSHOT_MODE ? "No activity yet." : "当前没有活动记录。"}</div>
+              <div className="empty-state">{"当前没有活动记录。"}</div>
             )}
           </div>
 
           <button type="button" className="panel-link" onClick={onRefresh}>
-            {SCREENSHOT_MODE ? "View full log" : "刷新主控台"}
-            {SCREENSHOT_MODE ? <ExternalLink size={14} /> : <RefreshCcw size={14} />}
+            {"刷新主控台"}
+            {<RefreshCcw size={14} />}
           </button>
         </article>
       </section>

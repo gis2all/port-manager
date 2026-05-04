@@ -10,7 +10,6 @@ import { deleteManagedService, getDashboardSnapshot, killProcessByPort, saveMana
 import { countFavorites, countListeningPorts, countRunningServices, findPortByRowKey, findService, getPortRowKey } from "./lib/dashboard";
 import { isMockRuntime } from "./lib/mockBackend";
 import { formatOptionalText, formatPortList, formatPortStatusLabel, formatProtocolLabel, formatServiceKindLabel, formatServiceStatusLabel, portStatusTone, serviceStatusTone } from "./lib/presentation";
-import { isScreenshotMode, SCREENSHOT_ACTIVITY, SCREENSHOT_LAST_SCAN_LABEL, SCREENSHOT_TIMESTAMP } from "./lib/screenshotMode";
 import type { ActivityEntry, ActivityTone, DashboardSnapshotDto, ManagedServiceDraftDto, ManagedServiceDto, PortDto } from "./lib/types";
 
 const DASHBOARD_QUERY_KEY = ["dashboard"];
@@ -22,21 +21,13 @@ const EMPTY_SNAPSHOT: DashboardSnapshotDto = {
   services: [],
 };
 
-const SCREENSHOT_MODE = isScreenshotMode();
-const REFERENCE_LAYOUT_MODE = true;
 const MAX_ACTIVITY_ENTRIES = 10;
 
-const NAV_ITEMS: Array<{ key: TabKey; label: string; description: string; icon: LucideIcon }> = SCREENSHOT_MODE
-  ? [
-      { key: "ports", label: "Ports", description: "Monitor ports and process state", icon: LayoutGrid },
-      { key: "services", label: "Services", description: "Start, stop, and register services", icon: Server },
-      { key: "favorites", label: "Favorites", description: "Pin important ports and services", icon: Bookmark },
-    ]
-  : [
-      { key: "ports", label: "端口总览", description: "查看端口与进程状态", icon: LayoutGrid },
-      { key: "services", label: "服务编排", description: "启动、停止与登记服务", icon: Server },
-      { key: "favorites", label: "收藏夹", description: "固定重点端口和服务", icon: Bookmark },
-    ];
+const NAV_ITEMS: Array<{ key: TabKey; label: string; description: string; icon: LucideIcon }> = [
+  { key: "ports", label: "端口总览", description: "查看端口与进程状态", icon: LayoutGrid },
+  { key: "services", label: "服务编排", description: "启动、停止与登记服务", icon: Server },
+  { key: "favorites", label: "收藏夹", description: "固定重点端口和服务", icon: Bookmark },
+];
 
 function getDesktopWindowHandle() {
   return isMockRuntime() ? null : getCurrentWindow();
@@ -47,7 +38,7 @@ export function App() {
   const [selectedPortKey, setSelectedPortKey] = useState<string | null>(null);
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
   const [portSelectionLocked, setPortSelectionLocked] = useState(false);
-  const [activity, setActivity] = useState<ActivityEntry[]>(() => (SCREENSHOT_MODE ? SCREENSHOT_ACTIVITY : []));
+  const [activity, setActivity] = useState<ActivityEntry[]>([]);
   const [isWindowMaximized, setIsWindowMaximized] = useState(false);
   const workspaceBodyRef = useRef<HTMLDivElement | null>(null);
   const previousSnapshotRef = useRef<DashboardSnapshotDto | null>(null);
@@ -56,17 +47,13 @@ export function App() {
   const dashboard = useQuery({
     queryKey: DASHBOARD_QUERY_KEY,
     queryFn: getDashboardSnapshot,
-    refetchInterval: SCREENSHOT_MODE ? false : 5000,
-    staleTime: SCREENSHOT_MODE ? Infinity : 2000,
+    refetchInterval: 5000,
+    staleTime: 2000,
   });
 
   const snapshot = dashboard.data ?? EMPTY_SNAPSHOT;
-  const lastScanLabel = SCREENSHOT_MODE
-    ? SCREENSHOT_LAST_SCAN_LABEL
-    : formatClockLabel(new Date(dashboard.dataUpdatedAt || Date.now()));
-  const scanTimestampLabel = SCREENSHOT_MODE
-    ? SCREENSHOT_TIMESTAMP
-    : formatDetailedTimestamp(new Date(dashboard.dataUpdatedAt || Date.now()));
+  const lastScanLabel = formatClockLabel(new Date(dashboard.dataUpdatedAt || Date.now()));
+  const scanTimestampLabel = formatDetailedTimestamp(new Date(dashboard.dataUpdatedAt || Date.now()));
   const portRecord = selectedPortKey === null ? null : findPortByRowKey(snapshot, selectedPortKey) ?? null;
   const serviceRecord = selectedServiceId === null ? null : findService(snapshot, selectedServiceId) ?? null;
   const portServiceRecord = portRecord
@@ -145,10 +132,6 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    if (SCREENSHOT_MODE) {
-      return;
-    }
-
     if (!dashboard.data) {
       return;
     }
@@ -175,7 +158,7 @@ export function App() {
     prependActivityEntries(
       setActivity,
       [{ title, detail, tone }],
-      SCREENSHOT_MODE ? SCREENSHOT_LAST_SCAN_LABEL : formatClockLabel(new Date()),
+      formatClockLabel(new Date()),
     );
   };
 
@@ -187,12 +170,12 @@ export function App() {
     try {
       await refreshDashboard();
       logAction(
-        SCREENSHOT_MODE ? "Refresh complete" : "刷新完成",
-        SCREENSHOT_MODE ? "Screenshot snapshot synced to the locked reference state." : isMockRuntime() ? "预览快照已同步到最新状态。" : "已从本机重新加载端口与服务快照。",
+        "刷新完成",
+        isMockRuntime() ? "预览快照已同步到最新状态。" : "已从本机重新加载端口与服务快照。",
         "neutral",
       );
     } catch (error) {
-      logFailure(SCREENSHOT_MODE ? "Refresh failed" : "刷新失败", error);
+      logFailure("刷新失败", error);
     }
   };
 
@@ -216,27 +199,30 @@ export function App() {
     try {
       const pid = await killProcessByPort(port);
       logAction(
-        SCREENSHOT_MODE ? "Process terminated" : "进程已结束",
-        SCREENSHOT_MODE ? `Process ${pid} on port ${port} was terminated.` : `端口 ${port} 对应的进程 ${pid} 已终止。`,
+        "进程已结束",
+        `端口 ${port} 对应的进程 ${pid} 已终止。`,
         "warning",
       );
       await refreshDashboard({ suppressSnapshotDiff: true });
     } catch (error) {
-      logFailure(SCREENSHOT_MODE ? "Kill process failed" : "结束进程失败", error);
+      logFailure("结束进程失败", error);
     }
   };
 
-  const handleTogglePortFavorite = async (port: number) => {
+  const handleTogglePortFavorite = async (port: PortDto) => {
+    const nextFavorite = !port.is_favorite;
+    const rowKey = getPortRowKey(port);
+
     try {
-      await togglePortFavorite(port);
+      await togglePortFavorite(rowKey, port.port, nextFavorite);
       logAction(
-        SCREENSHOT_MODE ? "Favorite updated" : "端口收藏已更新",
-        SCREENSHOT_MODE ? `Favorite state for port ${port} was toggled.` : `端口 ${port} 的收藏状态已切换。`,
+        "端口收藏已更新",
+        `端口 ${port.port} 的收藏状态已切换。`,
         "success",
       );
       await refreshDashboard({ suppressSnapshotDiff: true });
     } catch (error) {
-      logFailure(SCREENSHOT_MODE ? "Favorite update failed" : "端口收藏更新失败", error);
+      logFailure("端口收藏更新失败", error);
     }
   };
 
@@ -245,13 +231,13 @@ export function App() {
       await toggleServiceFavorite(serviceId);
       const service = findService(snapshot, serviceId);
       logAction(
-        SCREENSHOT_MODE ? "Service favorite updated" : "服务收藏已更新",
-        SCREENSHOT_MODE ? `Favorite state for ${service?.name ?? serviceId} was toggled.` : `${service?.name ?? serviceId} 的收藏状态已切换。`,
+        "服务收藏已更新",
+        `${service?.name ?? serviceId} 的收藏状态已切换。`,
         "success",
       );
       await refreshDashboard({ suppressSnapshotDiff: true });
     } catch (error) {
-      logFailure(SCREENSHOT_MODE ? "Service favorite update failed" : "服务收藏更新失败", error);
+      logFailure("服务收藏更新失败", error);
     }
   };
 
@@ -259,10 +245,10 @@ export function App() {
     try {
       await startManagedService(serviceId);
       const service = findService(snapshot, serviceId);
-      logAction(SCREENSHOT_MODE ? "Service started" : "服务已启动", SCREENSHOT_MODE ? `${service?.name ?? serviceId} started.` : `${service?.name ?? serviceId} 已启动。`, "success");
+      logAction("服务已启动", `${service?.name ?? serviceId} 已启动。`, "success");
       await refreshDashboard({ suppressSnapshotDiff: true });
     } catch (error) {
-      logFailure(SCREENSHOT_MODE ? "Start service failed" : "启动服务失败", error);
+      logFailure("启动服务失败", error);
     }
   };
 
@@ -270,22 +256,22 @@ export function App() {
     try {
       await stopManagedService(serviceId);
       const service = findService(snapshot, serviceId);
-      logAction(SCREENSHOT_MODE ? "Service stopped" : "服务已停止", SCREENSHOT_MODE ? `${service?.name ?? serviceId} stopped.` : `${service?.name ?? serviceId} 已停止。`, "warning");
+      logAction("服务已停止", `${service?.name ?? serviceId} 已停止。`, "warning");
       await refreshDashboard({ suppressSnapshotDiff: true });
     } catch (error) {
-      logFailure(SCREENSHOT_MODE ? "Stop service failed" : "停止服务失败", error);
+      logFailure("停止服务失败", error);
     }
   };
 
   const handleSaveService = async (draft: ManagedServiceDraftDto) => {
     try {
       const serviceId = await saveManagedService(draft);
-      logAction(SCREENSHOT_MODE ? "Service saved" : "服务已保存", SCREENSHOT_MODE ? `${draft.name} was added to the service catalog.` : `${draft.name} 已加入服务目录。`, "success");
+      logAction("服务已保存", `${draft.name} 已加入服务目录。`, "success");
       await refreshDashboard({ suppressSnapshotDiff: true });
       setSelectedServiceId(serviceId);
       setActiveTab("services");
     } catch (error) {
-      logFailure(SCREENSHOT_MODE ? "Save service failed" : "保存服务失败", error);
+      logFailure("保存服务失败", error);
     }
   };
 
@@ -294,8 +280,8 @@ export function App() {
       const service = findService(snapshot, serviceId);
       await deleteManagedService(serviceId);
       logAction(
-        SCREENSHOT_MODE ? "Service deleted" : "服务已删除",
-        SCREENSHOT_MODE ? `${service?.name ?? serviceId} was removed from the service catalog.` : `${service?.name ?? serviceId} 已从服务目录移除。`,
+        "服务已删除",
+        `${service?.name ?? serviceId} 已从服务目录移除。`,
         "warning",
       );
       if (selectedServiceId === serviceId) {
@@ -303,7 +289,7 @@ export function App() {
       }
       await refreshDashboard({ suppressSnapshotDiff: true });
     } catch (error) {
-      logFailure(SCREENSHOT_MODE ? "Delete service failed" : "删除服务失败", error);
+      logFailure("删除服务失败", error);
     }
   };
 
@@ -311,8 +297,8 @@ export function App() {
     setActivity([]);
   };
 
-  return (
-    <div className={`app-root ${REFERENCE_LAYOUT_MODE ? "screenshot-mode" : ""}`}>
+    return (
+      <div className="app-root desktop-layout">
       <div className="app-scale-frame">
         <WindowTitlebar isWindowMaximized={isWindowMaximized} />
 
@@ -475,7 +461,7 @@ function WindowTitlebar({ isWindowMaximized }: { isWindowMaximized: boolean }) {
             <Network size={18} />
           </div>
           <div className="window-titlebar-copy">
-            <strong>{SCREENSHOT_MODE ? "Port Manager" : "端口管理器"}</strong>
+            <strong>{"端口管理器"}</strong>
           </div>
         </div>
       </div>
@@ -503,7 +489,7 @@ interface PortDetailProps {
   scanTimestampLabel: string;
   onClose: () => void;
   onKillPort: (port: number) => void;
-  onToggleFavorite: (port: number) => void;
+  onToggleFavorite: (port: PortDto) => void;
   onStartService: (serviceId: string) => void;
   onStopService: (serviceId: string) => void;
   onToggleServiceFavorite: (serviceId: string) => void;
@@ -524,7 +510,7 @@ function PortDetail({
     return (
       <div className="detail-empty">
         <CircleDot size={32} />
-        <h2>{SCREENSHOT_MODE ? "Select a port" : "选择一个端口"}</h2>
+        <h2>{"选择一个端口"}</h2>
       </div>
     );
   }
@@ -535,53 +521,53 @@ function PortDetail({
     <div className="detail-stack">
       <div className="detail-header">
         <div>
-          <span className="detail-eyebrow">{SCREENSHOT_MODE ? "Port Inspector" : "端口详情"}</span>
-          <h2>{SCREENSHOT_MODE ? `Port ${port.port} (${formatProtocolLabel(port.protocol)})` : `端口 ${port.port} (${formatProtocolLabel(port.protocol)})`}</h2>
+          <span className="detail-eyebrow">{"端口详情"}</span>
+          <h2>{`端口 ${port.port} (${formatProtocolLabel(port.protocol)})`}</h2>
         </div>
 
         <div className="detail-header-actions">
-          <button type="button" className="detail-close" onClick={onClose} aria-label={SCREENSHOT_MODE ? "Close port details" : "关闭端口详情"}>
+          <button type="button" className="detail-close" onClick={onClose} aria-label={"关闭端口详情"}>
             <X size={14} />
           </button>
         </div>
       </div>
 
       <section className="detail-section">
-        <h3>{SCREENSHOT_MODE ? "Overview" : "基本概览"}</h3>
+        <h3>{"基本概览"}</h3>
         <div className="detail-grid detail-grid-large">
-          <DetailField label={SCREENSHOT_MODE ? "Status:" : "状态"} value={<StatusPill label={formatPortStatusLabel(port.status)} tone={portStatusTone(port.status)} />} />
-          <DetailField label={SCREENSHOT_MODE ? "Process:" : "进程"} value={formatOptionalText(port.process_name, SCREENSHOT_MODE ? "[No Process]" : "未检测到进程")} />
-          <DetailField label="PID:" value={SCREENSHOT_MODE ? (port.pid ?? 0).toLocaleString("en-US") : port.pid === null ? "未检测" : port.pid.toLocaleString("zh-CN")} />
-          <DetailField label={SCREENSHOT_MODE ? "Protocol:" : "协议"} value={formatProtocolLabel(port.protocol)} />
-          <DetailField label={SCREENSHOT_MODE ? "Listen Address:" : "监听地址"} value={<span className="mono">{port.listen_address}</span>} />
-          <DetailField label={SCREENSHOT_MODE ? "Created:" : "创建时间"} value={meta.created} />
-          <DetailField label={SCREENSHOT_MODE ? "User:" : "运行用户"} value={meta.user} />
+          <DetailField label={"状态"} value={<StatusPill label={formatPortStatusLabel(port.status)} tone={portStatusTone(port.status)} />} />
+          <DetailField label={"进程"} value={formatOptionalText(port.process_name, "未检测到进程")} />
+          <DetailField label="PID:" value={port.pid === null ? "未检测" : port.pid.toLocaleString("zh-CN")} />
+          <DetailField label={"协议"} value={formatProtocolLabel(port.protocol)} />
+          <DetailField label={"监听地址"} value={<span className="mono">{port.listen_address}</span>} />
+          <DetailField label={"创建时间"} value={meta.created} />
+          <DetailField label={"运行用户"} value={meta.user} />
         </div>
       </section>
 
       <section className="detail-section">
-        <h3>{SCREENSHOT_MODE ? "Process Details" : "进程信息"}</h3>
+        <h3>{"进程信息"}</h3>
         <div className="detail-details-list">
-          <DetailField label={SCREENSHOT_MODE ? "File Path:" : "可执行路径"} value={<span className="mono">{meta.filePath}</span>} />
-          <DetailField label={SCREENSHOT_MODE ? "Company:" : "厂商"} value={meta.company} />
-          <DetailField label={SCREENSHOT_MODE ? "File Version:" : "文件版本"} value={meta.fileVersion} />
-          <DetailField label={SCREENSHOT_MODE ? "Description:" : "描述"} value={meta.description} />
+          <DetailField label={"可执行路径"} value={<span className="mono">{meta.filePath}</span>} />
+          <DetailField label={"厂商"} value={meta.company} />
+          <DetailField label={"文件版本"} value={meta.fileVersion} />
+          <DetailField label={"描述"} value={meta.description} />
           <DetailField
-            label={SCREENSHOT_MODE ? "Digital Signature:" : "数字签名"}
-            value={<StatusPill label={meta.digitalSignature} tone={meta.digitalSignature === (SCREENSHOT_MODE ? "Valid" : "有效") ? "success" : "neutral"} />}
+            label={"数字签名"}
+            value={<StatusPill label={meta.digitalSignature} tone={meta.digitalSignature === ("有效") ? "success" : "neutral"} />}
           />
-          <DetailField label={SCREENSHOT_MODE ? "Start Time:" : "启动时间"} value={meta.startTime} />
-          <DetailField label={SCREENSHOT_MODE ? "Working Set:" : "工作集"} value={meta.workingSet} />
+          <DetailField label={"启动时间"} value={meta.startTime} />
+          <DetailField label={"工作集"} value={meta.workingSet} />
         </div>
       </section>
 
       <section className="detail-section">
-        <h3>{SCREENSHOT_MODE ? "Actions" : "操作"}</h3>
+        <h3>{"操作"}</h3>
 
       <div className="detail-actions">
-        <button type="button" className="primary-button danger-primary" onClick={() => onKillPort(port.port)} disabled={SCREENSHOT_MODE ? false : !port.pid}>
+        <button type="button" className="primary-button danger-primary" onClick={() => onKillPort(port.port)} disabled={!port.pid}>
           <TriangleAlert size={15} />
-          {SCREENSHOT_MODE ? "Kill Process" : "结束进程"}
+          {"结束进程"}
         </button>
         {matchedService ? (
           <>
@@ -589,25 +575,25 @@ function PortDetail({
               type="button"
               className="primary-button"
               onClick={() => onStartService(matchedService.id)}
-              disabled={SCREENSHOT_MODE ? false : matchedService.status === "running" || matchedService.status === "starting"}
+              disabled={matchedService.status === "running" || matchedService.status === "starting"}
             >
               <Play size={15} />
-              {SCREENSHOT_MODE ? "Start Service" : "启动服务"}
+              {"启动服务"}
             </button>
             <button
               type="button"
               className="ghost-button"
               onClick={() => onStopService(matchedService.id)}
-              disabled={SCREENSHOT_MODE ? false : matchedService.status !== "running" && matchedService.status !== "starting"}
+              disabled={matchedService.status !== "running" && matchedService.status !== "starting"}
             >
               <Square size={14} />
-              {SCREENSHOT_MODE ? "Stop Service" : "停止服务"}
+              {"停止服务"}
             </button>
           </>
         ) : null}
-        <button type="button" className="ghost-button" onClick={() => onToggleFavorite(port.port)}>
+        <button type="button" className="ghost-button" onClick={() => onToggleFavorite(port)}>
           <Star size={14} />
-          {SCREENSHOT_MODE ? "Toggle Favorite" : "切换收藏"}
+          {"切换收藏"}
         </button>
       </div>
       </section>
@@ -642,7 +628,7 @@ function ServiceDetail({ service, onStartService, onStopService, onToggleFavorit
     return (
       <div className="detail-empty">
         <Server size={32} />
-        <h2>{SCREENSHOT_MODE ? "Select a service" : "选择一个服务"}</h2>
+        <h2>{"选择一个服务"}</h2>
       </div>
     );
   }
@@ -651,21 +637,21 @@ function ServiceDetail({ service, onStartService, onStopService, onToggleFavorit
     <div className="detail-stack">
       <div className="detail-header">
         <div>
-          <span className="detail-eyebrow">{SCREENSHOT_MODE ? "Service Inspector" : "服务详情"}</span>
+          <span className="detail-eyebrow">{"服务详情"}</span>
           <h2>{service.name}</h2>
         </div>
       </div>
 
       <section className="detail-section">
-        <h3>{SCREENSHOT_MODE ? "Overview" : "服务概览"}</h3>
+        <h3>{"服务概览"}</h3>
         <div className="detail-grid detail-grid-large">
-          <DetailField label={SCREENSHOT_MODE ? "Status:" : "状态"} value={<StatusPill label={formatServiceStatusLabel(service.status)} tone={serviceStatusTone(service.status)} />} />
-          <DetailField label={SCREENSHOT_MODE ? "Service Type:" : "服务类型"} value={formatServiceKindLabel(service.kind)} />
-          <DetailField label={SCREENSHOT_MODE ? "Expected Ports:" : "预期端口"} value={<span className="mono">{formatPortList(service.expected_ports)}</span>} />
-          <DetailField label={SCREENSHOT_MODE ? "Observed Ports:" : "已观测端口"} value={<span className="mono">{formatPortList(service.observed_ports)}</span>} />
-          <DetailField label={SCREENSHOT_MODE ? "Windows Service Name:" : "Windows 服务名"} value={formatOptionalText(service.service_name, SCREENSHOT_MODE ? "Not configured" : "未配置")} />
-          <DetailField label={SCREENSHOT_MODE ? "Start Command:" : "启动命令"} value={<span className="mono">{formatOptionalText(service.start_command, SCREENSHOT_MODE ? "Not configured" : "未配置")}</span>} />
-          <DetailField label={SCREENSHOT_MODE ? "Working Directory:" : "工作目录"} value={<span className="mono">{formatOptionalText(service.workdir, SCREENSHOT_MODE ? "Not configured" : "未配置")}</span>} />
+          <DetailField label={"状态"} value={<StatusPill label={formatServiceStatusLabel(service.status)} tone={serviceStatusTone(service.status)} />} />
+          <DetailField label={"服务类型"} value={formatServiceKindLabel(service.kind)} />
+          <DetailField label={"预期端口"} value={<span className="mono">{formatPortList(service.expected_ports)}</span>} />
+          <DetailField label={"已观测端口"} value={<span className="mono">{formatPortList(service.observed_ports)}</span>} />
+          <DetailField label={"Windows 服务名"} value={formatOptionalText(service.service_name, "未配置")} />
+          <DetailField label={"启动命令"} value={<span className="mono">{formatOptionalText(service.start_command, "未配置")}</span>} />
+          <DetailField label={"工作目录"} value={<span className="mono">{formatOptionalText(service.workdir, "未配置")}</span>} />
         </div>
       </section>
 
@@ -674,27 +660,27 @@ function ServiceDetail({ service, onStartService, onStopService, onToggleFavorit
           type="button"
           className="primary-button"
           onClick={() => onStartService(service.id)}
-          disabled={SCREENSHOT_MODE ? false : service.status === "running" || service.status === "starting"}
+          disabled={service.status === "running" || service.status === "starting"}
         >
           <Play size={15} />
-          {SCREENSHOT_MODE ? "Start Service" : "启动服务"}
+          {"启动服务"}
         </button>
         <button
           type="button"
           className="ghost-button"
           onClick={() => onStopService(service.id)}
-          disabled={SCREENSHOT_MODE ? false : service.status !== "running" && service.status !== "starting"}
+          disabled={service.status !== "running" && service.status !== "starting"}
         >
           <Square size={14} />
-          {SCREENSHOT_MODE ? "Stop Service" : "停止服务"}
+          {"停止服务"}
         </button>
         <button type="button" className="ghost-button" onClick={() => onToggleFavorite(service.id)}>
           <Star size={14} />
-          {SCREENSHOT_MODE ? "Toggle Favorite" : "切换收藏"}
+          {"切换收藏"}
         </button>
         <button type="button" className="ghost-button danger" onClick={() => onDeleteService(service.id)}>
           <TriangleAlert size={14} />
-          {SCREENSHOT_MODE ? "Delete Service" : "删除服务"}
+          {"删除服务"}
         </button>
       </div>
     </div>
@@ -709,29 +695,29 @@ function FavoritesDetail({ snapshot }: { snapshot: DashboardSnapshotDto }) {
     <div className="detail-stack">
       <div className="detail-header">
         <div>
-          <span className="detail-eyebrow">{SCREENSHOT_MODE ? "Favorites Summary" : "收藏总览"}</span>
-          <h2>{SCREENSHOT_MODE ? `${countFavorites(snapshot)} favorite items` : `${countFavorites(snapshot)} 个收藏对象`}</h2>
+          <span className="detail-eyebrow">{"收藏总览"}</span>
+          <h2>{`${countFavorites(snapshot)} 个收藏对象`}</h2>
         </div>
       </div>
 
       <section className="detail-section">
-        <h3>{SCREENSHOT_MODE ? "Overview" : "收藏概览"}</h3>
+        <h3>{"收藏概览"}</h3>
         <div className="detail-grid detail-grid-large">
-          <DetailField label={SCREENSHOT_MODE ? "Favorite Ports:" : "收藏端口"} value={snapshot.ports.filter((port) => port.is_favorite).length} />
-          <DetailField label={SCREENSHOT_MODE ? "Favorite Services:" : "收藏服务"} value={snapshot.services.filter((service) => service.is_favorite).length} />
-          <DetailField label={SCREENSHOT_MODE ? "Running Services:" : "运行服务"} value={countRunningServices(snapshot)} />
-          <DetailField label={SCREENSHOT_MODE ? "Listening / Active Ports:" : "监听/活跃端口"} value={countListeningPorts(snapshot)} />
+          <DetailField label={"收藏端口"} value={snapshot.ports.filter((port) => port.is_favorite).length} />
+          <DetailField label={"收藏服务"} value={snapshot.services.filter((service) => service.is_favorite).length} />
+          <DetailField label={"运行服务"} value={countRunningServices(snapshot)} />
+          <DetailField label={"监听/活跃端口"} value={countListeningPorts(snapshot)} />
         </div>
       </section>
 
       <section className="detail-section">
-        <h3>{SCREENSHOT_MODE ? "Top Items" : "重点对象"}</h3>
+        <h3>{"重点对象"}</h3>
         <div className="detail-note-list">
           {favoritePortItems.map((port) => (
             <div key={`favorite-port-${port.port}`} className="detail-note-item">
               <div>
-                <strong>{SCREENSHOT_MODE ? `Port ${port.port}` : `端口 ${port.port}`}</strong>
-                <span>{formatOptionalText(port.process_name, SCREENSHOT_MODE ? "Not detected" : "未检测到进程")}</span>
+                <strong>{`端口 ${port.port}`}</strong>
+                <span>{formatOptionalText(port.process_name, "未检测到进程")}</span>
               </div>
               <StatusPill label={formatPortStatusLabel(port.status)} tone={portStatusTone(port.status)} />
             </div>
@@ -747,7 +733,7 @@ function FavoritesDetail({ snapshot }: { snapshot: DashboardSnapshotDto }) {
             </div>
           ))}
 
-          {!favoritePortItems.length && !favoriteServiceItems.length ? <div className="empty-state">{SCREENSHOT_MODE ? "No favorite items yet." : "还没有收藏对象。"}</div> : null}
+          {!favoritePortItems.length && !favoriteServiceItems.length ? <div className="empty-state">{"还没有收藏对象。"}</div> : null}
         </div>
       </section>
 
@@ -757,8 +743,8 @@ function FavoritesDetail({ snapshot }: { snapshot: DashboardSnapshotDto }) {
 
 function buildPortMeta(port: PortDto, service: ManagedServiceDto | null, scanTimestampLabel: string) {
   const processName = port.process_name?.toLowerCase() ?? "";
-  const createdAt = SCREENSHOT_MODE ? SCREENSHOT_TIMESTAMP : scanTimestampLabel;
-  const signatureLabel = SCREENSHOT_MODE ? "Valid" : "有效";
+  const createdAt = scanTimestampLabel;
+  const signatureLabel = "有效";
 
   if (processName.includes("httpd")) {
     return {
@@ -832,12 +818,12 @@ function buildPortMeta(port: PortDto, service: ManagedServiceDto | null, scanTim
 
   return {
     created: createdAt,
-    user: service?.kind === "windows_service" ? service.service_name ?? (SCREENSHOT_MODE ? "SYSTEM" : "系统") : SCREENSHOT_MODE ? "Current User" : "当前用户",
+    user: service?.kind === "windows_service" ? service.service_name ?? ("系统") : "当前用户",
     filePath: `C:\\Program Files\\${service?.name ?? "App"}\\${port.process_name ?? "service"}.exe`,
-    company: service?.name ?? (SCREENSHOT_MODE ? "Local Application" : "本地应用"),
+    company: service?.name ?? ("本地应用"),
     fileVersion: "1.0.0",
-    description: service?.name ?? (SCREENSHOT_MODE ? "Local process" : "本地进程"),
-    digitalSignature: port.pid ? signatureLabel : SCREENSHOT_MODE ? "Unknown" : "未知",
+    description: service?.name ?? ("本地进程"),
+    digitalSignature: port.pid ? signatureLabel : "未知",
     startTime: createdAt,
     workingSet: "24.0 MB",
   };
@@ -898,10 +884,8 @@ function buildSnapshotDiffActivity(previous: DashboardSnapshotDto, next: Dashboa
 
     if (!before) {
       entries.push({
-        title: SCREENSHOT_MODE ? "Port discovered" : "端口新增",
-        detail: SCREENSHOT_MODE
-          ? `Port ${port.port} appeared in the latest snapshot.`
-          : `端口 ${port.port} 已出现在最新快照中。`,
+        title: "端口新增",
+        detail: `端口 ${port.port} 已出现在最新快照中。`,
         tone: portStatusTone(port.status),
       });
       continue;
@@ -909,20 +893,16 @@ function buildSnapshotDiffActivity(previous: DashboardSnapshotDto, next: Dashboa
 
     if (before.status !== port.status) {
       entries.push({
-        title: SCREENSHOT_MODE ? "Port state changed" : "端口状态变更",
-        detail: SCREENSHOT_MODE
-          ? `Port ${port.port} changed from ${formatPortStatusLabel(before.status)} to ${formatPortStatusLabel(port.status)}.`
-          : `端口 ${port.port} 由 ${formatPortStatusLabel(before.status)} 变为 ${formatPortStatusLabel(port.status)}。`,
+        title: "端口状态变更",
+        detail: `端口 ${port.port} 由 ${formatPortStatusLabel(before.status)} 变为 ${formatPortStatusLabel(port.status)}。`,
         tone: portStatusTone(port.status),
       });
     }
 
     if (before.is_favorite !== port.is_favorite) {
       entries.push({
-        title: SCREENSHOT_MODE ? "Port favorite updated" : "端口收藏变更",
-        detail: SCREENSHOT_MODE
-          ? `Port ${port.port} was ${port.is_favorite ? "added to" : "removed from"} favorites.`
-          : `端口 ${port.port} 已${port.is_favorite ? "加入" : "移出"}收藏。`,
+        title: "端口收藏变更",
+        detail: `端口 ${port.port} 已${port.is_favorite ? "加入" : "移出"}收藏。`,
         tone: "accent",
       });
     }
@@ -931,10 +911,8 @@ function buildSnapshotDiffActivity(previous: DashboardSnapshotDto, next: Dashboa
   for (const [key, port] of previousPorts) {
     if (!nextPorts.has(key)) {
       entries.push({
-        title: SCREENSHOT_MODE ? "Port removed" : "端口移除",
-        detail: SCREENSHOT_MODE
-          ? `Port ${port.port} is no longer present in the latest snapshot.`
-          : `端口 ${port.port} 已从最新快照中移除。`,
+        title: "端口移除",
+        detail: `端口 ${port.port} 已从最新快照中移除。`,
         tone: "warning",
       });
     }
@@ -945,10 +923,8 @@ function buildSnapshotDiffActivity(previous: DashboardSnapshotDto, next: Dashboa
 
     if (!before) {
       entries.push({
-        title: SCREENSHOT_MODE ? "Service discovered" : "服务新增",
-        detail: SCREENSHOT_MODE
-          ? `${service.name} appeared in the latest snapshot.`
-          : `服务 ${service.name} 已进入最新快照。`,
+        title: "服务新增",
+        detail: `服务 ${service.name} 已进入最新快照。`,
         tone: serviceStatusTone(service.status),
       });
       continue;
@@ -956,20 +932,16 @@ function buildSnapshotDiffActivity(previous: DashboardSnapshotDto, next: Dashboa
 
     if (before.status !== service.status) {
       entries.push({
-        title: SCREENSHOT_MODE ? "Service state changed" : "服务状态变更",
-        detail: SCREENSHOT_MODE
-          ? `${service.name} changed from ${formatServiceStatusLabel(before.status)} to ${formatServiceStatusLabel(service.status)}.`
-          : `服务 ${service.name} 由 ${formatServiceStatusLabel(before.status)} 变为 ${formatServiceStatusLabel(service.status)}。`,
+        title: "服务状态变更",
+        detail: `服务 ${service.name} 由 ${formatServiceStatusLabel(before.status)} 变为 ${formatServiceStatusLabel(service.status)}。`,
         tone: serviceStatusTone(service.status),
       });
     }
 
     if (before.is_favorite !== service.is_favorite) {
       entries.push({
-        title: SCREENSHOT_MODE ? "Service favorite updated" : "服务收藏变更",
-        detail: SCREENSHOT_MODE
-          ? `${service.name} was ${service.is_favorite ? "added to" : "removed from"} favorites.`
-          : `服务 ${service.name} 已${service.is_favorite ? "加入" : "移出"}收藏。`,
+        title: "服务收藏变更",
+        detail: `服务 ${service.name} 已${service.is_favorite ? "加入" : "移出"}收藏。`,
         tone: "accent",
       });
     }
@@ -978,10 +950,8 @@ function buildSnapshotDiffActivity(previous: DashboardSnapshotDto, next: Dashboa
   for (const [serviceId, service] of previousServices) {
     if (!nextServices.has(serviceId)) {
       entries.push({
-        title: SCREENSHOT_MODE ? "Service removed" : "服务移除",
-        detail: SCREENSHOT_MODE
-          ? `${service.name} is no longer present in the latest snapshot.`
-          : `服务 ${service.name} 已从最新快照中移除。`,
+        title: "服务移除",
+        detail: `服务 ${service.name} 已从最新快照中移除。`,
         tone: "warning",
       });
     }

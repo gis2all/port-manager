@@ -11,10 +11,13 @@ import {
   togglePortFavorite as togglePortFavoriteMock,
   toggleServiceFavorite as toggleServiceFavoriteMock,
 } from "./mockBackend";
-import { isScreenshotMode } from "./screenshotMode";
+
+function getArg(args: Record<string, unknown> | undefined, camelKey: string, snakeKey = camelKey): unknown {
+  return args?.[camelKey] ?? args?.[snakeKey];
+}
 
 async function call<T>(command: string, args?: Record<string, unknown>): Promise<T> {
-  if (!isMockRuntime() && !isScreenshotMode()) {
+  if (!isMockRuntime()) {
     return invoke<T>(command, args);
   }
 
@@ -24,17 +27,21 @@ async function call<T>(command: string, args?: Record<string, unknown>): Promise
     case "kill_process_by_port":
       return (await killProcessByPortMock(Number(args?.port))) as T;
     case "toggle_port_favorite":
-      return (await togglePortFavoriteMock(Number(args?.port))) as T;
+      return (await togglePortFavoriteMock(
+        String(getArg(args, "rowKey", "row_key")),
+        Number(args?.port),
+        Boolean(getArg(args, "isFavorite", "is_favorite")),
+      )) as T;
     case "toggle_service_favorite":
-      return (await toggleServiceFavoriteMock(String(args?.service_id))) as T;
+      return (await toggleServiceFavoriteMock(String(getArg(args, "serviceId", "service_id")))) as T;
     case "save_managed_service":
       return (await saveManagedServiceMock(args?.draft as ManagedServiceDraftDto)) as T;
     case "delete_managed_service":
-      return (await deleteManagedServiceMock(String(args?.service_id))) as T;
+      return (await deleteManagedServiceMock(String(getArg(args, "serviceId", "service_id")))) as T;
     case "start_managed_service":
-      return (await startManagedServiceMock(String(args?.service_id))) as T;
+      return (await startManagedServiceMock(String(getArg(args, "serviceId", "service_id")))) as T;
     case "stop_managed_service":
-      return (await stopManagedServiceMock(String(args?.service_id))) as T;
+      return (await stopManagedServiceMock(String(getArg(args, "serviceId", "service_id")))) as T;
     default:
       throw new Error(`Unknown command: ${command}`);
   }
@@ -48,26 +55,26 @@ export function killProcessByPort(port: number): Promise<number> {
   return call<number>("kill_process_by_port", { port });
 }
 
-export function togglePortFavorite(port: number): Promise<void> {
-  return call<void>("toggle_port_favorite", { port });
+export function togglePortFavorite(rowKey: string, port: number, isFavorite: boolean): Promise<void> {
+  return call<void>("toggle_port_favorite", { rowKey, port, isFavorite });
 }
 
-export function toggleServiceFavorite(service_id: string): Promise<void> {
-  return call<void>("toggle_service_favorite", { service_id });
+export function toggleServiceFavorite(serviceId: string): Promise<void> {
+  return call<void>("toggle_service_favorite", { serviceId });
 }
 
 export function saveManagedService(draft: ManagedServiceDraftDto): Promise<string> {
   return call<string>("save_managed_service", { draft });
 }
 
-export function deleteManagedService(service_id: string): Promise<void> {
-  return call<void>("delete_managed_service", { service_id });
+export function deleteManagedService(serviceId: string): Promise<void> {
+  return call<void>("delete_managed_service", { serviceId });
 }
 
-export function startManagedService(service_id: string): Promise<void> {
-  return call<void>("start_managed_service", { service_id });
+export function startManagedService(serviceId: string): Promise<void> {
+  return call<void>("start_managed_service", { serviceId });
 }
 
-export function stopManagedService(service_id: string): Promise<void> {
-  return call<void>("stop_managed_service", { service_id });
+export function stopManagedService(serviceId: string): Promise<void> {
+  return call<void>("stop_managed_service", { serviceId });
 }
