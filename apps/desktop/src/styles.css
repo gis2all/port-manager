@@ -199,7 +199,7 @@ a {
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: 196px minmax(0, 1fr) 326px;
+  grid-template-columns: 168px minmax(0, 1fr) 280px;
   grid-template-rows: minmax(0, 1fr);
   gap: 0;
   overflow: hidden;
@@ -236,12 +236,18 @@ a {
 .brand-mark {
   width: 32px;
   height: 32px;
-  border-radius: 2px;
   display: grid;
   place-items: center;
-  background: linear-gradient(135deg, rgba(103, 215, 242, 0.98), rgba(74, 176, 255, 0.92));
-  color: #071017;
-  box-shadow: 0 14px 28px rgba(74, 176, 255, 0.18);
+  overflow: hidden;
+}
+
+.brand-mark-image {
+  display: block;
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+  user-select: none;
+  pointer-events: none;
 }
 
 .brand strong {
@@ -1853,11 +1859,11 @@ a {
 }
 
 .desktop-layout .app-shell {
-  grid-template-columns: 188px minmax(0, 1fr) 328px;
+  grid-template-columns: 160px minmax(0, 1fr) 280px;
 }
 
 .desktop-layout .sidebar {
-  padding: 12px 12px 10px 8px;
+  padding: 10px 10px 10px 6px;
   background: linear-gradient(180deg, rgba(11, 16, 22, 0.45), rgba(10, 14, 19, 0.68));
   border-right-color: rgba(255, 255, 255, 0.04);
 }
@@ -1869,7 +1875,7 @@ a {
 
 .desktop-layout .nav-item {
   min-height: 56px;
-  padding: 0 14px;
+  padding: 0 12px;
   border-radius: 2px;
   border-color: transparent;
 }
@@ -2280,7 +2286,7 @@ a {
 
 @media (max-width: 1320px) {
   .app-shell {
-    grid-template-columns: 170px minmax(0, 1fr) 320px;
+    grid-template-columns: 148px minmax(0, 1fr) 268px;
   }
 
   .bottom-grid {

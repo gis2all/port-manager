@@ -3,7 +3,7 @@
 use pm_application::{DashboardSnapshotDto, ManagedServiceDraftDto};
 use pm_tauri_api as api;
 use pm_tauri_api::AppState;
-use tauri::State;
+use tauri::{Manager, State};
 use uuid::Uuid;
 
 #[tauri::command]
@@ -59,6 +59,15 @@ fn main() {
 
     tauri::Builder::default()
         .manage(app_state)
+        .setup(|app| {
+            if let Some(window) = app.get_webview_window("main") {
+                if let Some(icon) = app.default_window_icon().cloned() {
+                    let _ = window.set_icon(icon);
+                }
+            }
+
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             get_dashboard_snapshot,
             kill_process_by_port,

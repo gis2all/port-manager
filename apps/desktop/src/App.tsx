@@ -11,6 +11,7 @@ import { countFavorites, countListeningPorts, countRunningServices, findPortByRo
 import { isMockRuntime } from "./lib/mockBackend";
 import { formatOptionalText, formatPortList, formatPortStatusLabel, formatProtocolLabel, formatServiceKindLabel, formatServiceStatusLabel, portStatusTone, serviceStatusTone } from "./lib/presentation";
 import type { ActivityEntry, ActivityTone, DashboardSnapshotDto, ManagedServiceDraftDto, ManagedServiceDto, PortDto } from "./lib/types";
+import appIcon from "../public/brand-icon.svg";
 
 const DASHBOARD_QUERY_KEY = ["dashboard"];
 
@@ -458,7 +459,7 @@ function WindowTitlebar({ isWindowMaximized }: { isWindowMaximized: boolean }) {
       <div className="window-titlebar-brand">
         <div className="brand">
           <div className="brand-mark">
-            <Network size={18} />
+            <img src={appIcon} alt="" className="brand-mark-image" draggable={false} />
           </div>
           <div className="window-titlebar-copy">
             <strong>{"端口管理器"}</strong>

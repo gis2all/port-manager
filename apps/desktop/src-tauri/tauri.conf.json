@@ -14,7 +14,8 @@
       {
         "label": "main",
         "title": "Port Manager",
-        "width": 1536,
+        "center": true,
+        "width": 1684,
         "height": 1024,
         "resizable": true,
         "decorations": false,
