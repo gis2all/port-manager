@@ -1,5 +1,6 @@
 use anyhow::Result;
 use pm_adapters_runner::LocalCommandRunner;
+use pm_adapters_runner::ProjectFileDetector;
 use pm_adapters_sqlite::SqliteStore;
 use pm_adapters_windows::{
     WindowsPortProvider, WindowsProcessController, WindowsServiceController,
@@ -14,6 +15,7 @@ pub type DesktopService = PortManagerService<
     WindowsProcessController,
     WindowsServiceController,
     LocalCommandRunner,
+    ProjectFileDetector,
     SqliteStore,
     SqliteStore,
     SqliteStore,
@@ -32,6 +34,7 @@ impl AppState {
             WindowsProcessController,
             WindowsServiceController,
             LocalCommandRunner,
+            ProjectFileDetector,
             store.clone(),
             store.clone(),
             store,

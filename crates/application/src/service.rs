@@ -1,4 +1,7 @@
-use crate::dto::{DashboardSnapshotDto, ManagedServiceDto, ManagedServiceDraftDto, PortDto};
+use crate::dto::{
+    DashboardSnapshotDto, DetectedServiceCandidateDto, ManagedServiceDraftDto, ManagedServiceDto,
+    PortDto, ProcessDetailDto,
+};
 use crate::errors::ApplicationError;
 use anyhow::Result;
 use chrono::Utc;
@@ -7,10 +10,12 @@ use pm_domain::{
     PortProtocol, PortRecord, PortStatus, RunOwnership, ServiceKind, ServiceRunStatus,
 };
 use pm_ports::{
-    CommandRunner, FavoriteRepository, ManagedServiceRepository, PortProvider, ProcessController,
-    RunStateRepository, ServiceController, StartCommandRequest,
+    CommandRunner, DetectedServiceCandidate, FavoriteRepository, ManagedServiceRepository,
+    PortProvider, ProcessController, ProjectDetector, RunStateRepository, ServiceController,
+    StartCommandRequest, StopCommandRequest,
 };
 use std::collections::{BTreeSet, HashMap, HashSet};
+use std::path::Path;
 use uuid::Uuid;
 
 fn port_row_key(port: &PortRecord, matched_service_id: Option<ManagedServiceId>) -> String {
@@ -32,22 +37,24 @@ fn port_row_key(port: &PortRecord, matched_service_id: Option<ManagedServiceId>)
     .join("|")
 }
 
-pub struct PortManagerService<P, PC, SC, CR, FR, MR, RR> {
+pub struct PortManagerService<P, PC, SC, CR, PD, FR, MR, RR> {
     port_provider: P,
     process_controller: PC,
     service_controller: SC,
     command_runner: CR,
+    project_detector: PD,
     favorite_repository: FR,
     managed_service_repository: MR,
     run_state_repository: RR,
 }
 
-impl<P, PC, SC, CR, FR, MR, RR> PortManagerService<P, PC, SC, CR, FR, MR, RR>
+impl<P, PC, SC, CR, PD, FR, MR, RR> PortManagerService<P, PC, SC, CR, PD, FR, MR, RR>
 where
     P: PortProvider,
     PC: ProcessController,
     SC: ServiceController,
     CR: CommandRunner,
+    PD: ProjectDetector,
     FR: FavoriteRepository,
     MR: ManagedServiceRepository,
     RR: RunStateRepository,
@@ -57,6 +64,7 @@ where
         process_controller: PC,
         service_controller: SC,
         command_runner: CR,
+        project_detector: PD,
         favorite_repository: FR,
         managed_service_repository: MR,
         run_state_repository: RR,
@@ -66,6 +74,7 @@ where
             process_controller,
             service_controller,
             command_runner,
+            project_detector,
             favorite_repository,
             managed_service_repository,
             run_state_repository,
@@ -161,23 +170,9 @@ where
                     },
                     None => "unknown".into(),
                 },
-                ServiceKind::Command => match self.run_state_repository.get(service.id()).await {
-                    Ok(Some(run)) => match run.status {
-                        ServiceRunStatus::Running => "running".into(),
-                        ServiceRunStatus::Stopped => "stopped".into(),
-                        ServiceRunStatus::Starting => "starting".into(),
-                        ServiceRunStatus::Failed => "failed".into(),
-                        ServiceRunStatus::Unknown => "unknown".into(),
-                    },
-                    Ok(None) => {
-                        if observed_ports.is_empty() {
-                            "stopped".into()
-                        } else {
-                            "running".into()
-                        }
-                    }
-                    Err(_) => "unknown".into(),
-                },
+                ServiceKind::Command => self
+                    .resolve_command_service_status(service.id(), observed_ports.is_empty())
+                    .await,
             };
 
             service_rows.push(ManagedServiceDto {
@@ -190,6 +185,8 @@ where
                 service_name: service.service_name().map(ToOwned::to_owned),
                 workdir: service.workdir().map(ToOwned::to_owned),
                 start_command: service.start_command().map(ToOwned::to_owned),
+                stop_command: service.stop_command().map(ToOwned::to_owned),
+                auto_detected_from: service.auto_detected_from().map(ToOwned::to_owned),
                 expected_ports: service.expected_ports().to_vec(),
                 observed_ports,
                 status,
@@ -203,6 +200,51 @@ where
             ports: port_rows,
             services: service_rows,
         })
+    }
+
+    pub async fn get_port_process_detail(
+        &self,
+        pid: u32,
+        process_name: Option<String>,
+    ) -> std::result::Result<ProcessDetailDto, ApplicationError> {
+        let detail = self
+            .process_controller
+            .get_process_details(pid)
+            .await
+            .map_err(|error| ApplicationError::ProcessControlFailed(error.to_string()))?
+            .ok_or(ApplicationError::ProcessMissing(pid))?;
+
+        Ok(ProcessDetailDto {
+            pid,
+            process_name,
+            executable_path: detail.executable_path,
+            started_at: detail.started_at,
+            working_set_bytes: detail.working_set_bytes,
+            private_bytes: detail.private_bytes,
+            vendor: detail.vendor,
+            file_version: detail.file_version,
+            digital_signature: detail.digital_signature,
+        })
+    }
+
+    pub async fn detect_project_services(
+        &self,
+        root: &str,
+    ) -> std::result::Result<Vec<DetectedServiceCandidateDto>, ApplicationError> {
+        if !Path::new(root).exists() {
+            return Err(ApplicationError::InvalidProjectPath(root.to_owned()));
+        }
+
+        let candidates = self
+            .project_detector
+            .detect(root)
+            .await
+            .map_err(|error| ApplicationError::CommandControlFailed(error.to_string()))?;
+
+        Ok(candidates
+            .into_iter()
+            .map(map_detected_candidate)
+            .collect::<Vec<_>>())
     }
 
     pub async fn kill_process_by_port(
@@ -318,6 +360,8 @@ where
                 let handle = self
                     .command_runner
                     .start(StartCommandRequest {
+                        service_id: id.to_string(),
+                        service_name: service.name().to_owned(),
                         command: start_command.to_owned(),
                         workdir: service.workdir().map(ToOwned::to_owned),
                     })
@@ -326,7 +370,7 @@ where
 
                 let run = ManagedServiceRun {
                     service_id: id,
-                    status: ServiceRunStatus::Running,
+                    status: ServiceRunStatus::Starting,
                     root_pid: Some(handle.root_pid),
                     child_pids: handle.child_pids,
                     started_at: Some(Utc::now()),
@@ -372,11 +416,17 @@ where
                     .ok_or_else(|| ApplicationError::ManagedServiceNotRunning(id.to_string()))?;
 
                 let Some(root_pid) = run.root_pid else {
-                    return Err(ApplicationError::ManagedServiceNotRunning(id.to_string()));
+                    return Err(ApplicationError::ManagedServiceRunPidMissing(id.to_string()));
                 };
 
-                self.command_runner
-                    .stop(root_pid)
+                let stop_result = self
+                    .command_runner
+                    .stop(StopCommandRequest {
+                        root_pid,
+                        child_pids: run.child_pids.clone(),
+                        stop_command: service.stop_command().map(ToOwned::to_owned),
+                        workdir: service.workdir().map(ToOwned::to_owned),
+                    })
                     .await
                     .map_err(|error| ApplicationError::CommandControlFailed(error.to_string()))?;
 
@@ -384,9 +434,9 @@ where
                     service_id: id,
                     status: ServiceRunStatus::Stopped,
                     root_pid: None,
-                    child_pids: run.child_pids,
+                    child_pids: stop_result.child_pids,
                     started_at: run.started_at,
-                    last_exit_code: run.last_exit_code,
+                    last_exit_code: stop_result.last_exit_code.or(run.last_exit_code),
                     log_path: run.log_path,
                     ownership: run.ownership,
                 };
@@ -416,14 +466,111 @@ impl ManagedServiceDraftDto {
                 let start_command = self.start_command.ok_or_else(|| {
                     ApplicationError::ManagedServiceMissingStartCommand(self.name.clone())
                 })?;
-                Ok(ManagedService::command(
+                Ok(ManagedService::command_with_stop(
                     self.name,
                     start_command,
+                    self.stop_command,
                     self.workdir,
                     self.expected_ports,
-                ))
+                )
+                .with_auto_detected_from(self.auto_detected_from))
             }
             other => Err(ApplicationError::InvalidManagedServiceKind(other.to_owned()).into()),
         }
+    }
+}
+
+impl<P, PC, SC, CR, PD, FR, MR, RR> PortManagerService<P, PC, SC, CR, PD, FR, MR, RR>
+where
+    P: PortProvider,
+    PC: ProcessController,
+    SC: ServiceController,
+    CR: CommandRunner,
+    PD: ProjectDetector,
+    FR: FavoriteRepository,
+    MR: ManagedServiceRepository,
+    RR: RunStateRepository,
+{
+    async fn resolve_command_service_status(
+        &self,
+        service_id: ManagedServiceId,
+        observed_ports_empty: bool,
+    ) -> String {
+        match self.run_state_repository.get(service_id).await {
+            Ok(Some(run)) => match run.status {
+                ServiceRunStatus::Running | ServiceRunStatus::Starting => {
+                    let Some(root_pid) = run.root_pid else {
+                        return if run.status == ServiceRunStatus::Starting {
+                            "failed".into()
+                        } else {
+                            "stopped".into()
+                        };
+                    };
+
+                    match self.process_controller.is_pid_running(root_pid).await {
+                        Ok(true) => {
+                            if run.status == ServiceRunStatus::Starting {
+                                let corrected = ManagedServiceRun {
+                                    service_id,
+                                    status: ServiceRunStatus::Running,
+                                    root_pid: run.root_pid,
+                                    child_pids: run.child_pids,
+                                    started_at: run.started_at,
+                                    last_exit_code: run.last_exit_code,
+                                    log_path: run.log_path,
+                                    ownership: run.ownership,
+                                };
+                                let _ = self.run_state_repository.save(corrected).await;
+                            }
+                            "running".into()
+                        }
+                        Ok(false) => {
+                            let corrected_status = if run.status == ServiceRunStatus::Starting {
+                                ServiceRunStatus::Failed
+                            } else {
+                                ServiceRunStatus::Stopped
+                            };
+                            let corrected = ManagedServiceRun {
+                                service_id,
+                                status: corrected_status.clone(),
+                                root_pid: None,
+                                child_pids: run.child_pids,
+                                started_at: run.started_at,
+                                last_exit_code: run.last_exit_code,
+                                log_path: run.log_path,
+                                ownership: run.ownership,
+                            };
+                            let _ = self.run_state_repository.save(corrected).await;
+                            match corrected_status {
+                                ServiceRunStatus::Failed => "failed".into(),
+                                _ => "stopped".into(),
+                            }
+                        }
+                        Err(_) => "unknown".into(),
+                    }
+                }
+                ServiceRunStatus::Stopped => "stopped".into(),
+                ServiceRunStatus::Failed => "failed".into(),
+                ServiceRunStatus::Unknown => "unknown".into(),
+            },
+            Ok(None) => {
+                if observed_ports_empty {
+                    "stopped".into()
+                } else {
+                    "running".into()
+                }
+            }
+            Err(_) => "unknown".into(),
+        }
+    }
+}
+
+fn map_detected_candidate(candidate: DetectedServiceCandidate) -> DetectedServiceCandidateDto {
+    DetectedServiceCandidateDto {
+        name: candidate.name,
+        start_command: candidate.start_command,
+        workdir: candidate.workdir,
+        expected_ports: candidate.expected_ports,
+        detected_from: candidate.detected_from,
     }
 }

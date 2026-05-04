@@ -4,8 +4,8 @@ use pm_application::PortManagerService;
 use pm_domain::{FavoriteTarget, ManagedService};
 use support::{
     InMemoryFavoriteRepository, InMemoryManagedServiceRepository, InMemoryRunStateRepository,
-    RecordingCommandRunner, RecordingProcessController, RecordingServiceController,
-    StaticPortProvider,
+    RecordingCommandRunner, RecordingProcessController, RecordingProjectDetector,
+    RecordingServiceController, StaticPortProvider,
 };
 
 #[tokio::test]
@@ -18,6 +18,7 @@ async fn toggle_favorite_updates_dashboard_snapshot() {
         RecordingProcessController::default(),
         RecordingServiceController::default(),
         RecordingCommandRunner::default(),
+        RecordingProjectDetector::default(),
         InMemoryFavoriteRepository::new(vec![]),
         InMemoryManagedServiceRepository::new(vec![service]),
         InMemoryRunStateRepository::default(),

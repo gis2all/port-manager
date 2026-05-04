@@ -1,6 +1,14 @@
 import { isTauri } from "@tauri-apps/api/core";
 import { getPortRowKey } from "./dashboard";
-import type { DashboardSnapshotDto, ManagedServiceDraftDto, ManagedServiceDto, PortDto, PortStatus } from "./types";
+import type {
+  DashboardSnapshotDto,
+  DetectedServiceCandidateDto,
+  ManagedServiceDraftDto,
+  ManagedServiceDto,
+  PortDto,
+  PortStatus,
+  ProcessDetailDto,
+} from "./types";
 
 interface MockState {
   snapshot: DashboardSnapshotDto;
@@ -24,6 +32,8 @@ function createMockSnapshot(): DashboardSnapshotDto {
     service_name: null,
     workdir: "C:/Apache24",
     start_command: "C:/Apache24/bin/httpd.exe -k runservice",
+    stop_command: "C:/Apache24/bin/httpd.exe -k stop",
+    auto_detected_from: null,
     expected_ports: [80, 443],
     observed_ports: [80, 443],
     status: "running",
@@ -37,6 +47,8 @@ function createMockSnapshot(): DashboardSnapshotDto {
     service_name: "postgresql-x64-17",
     workdir: "C:/Program Files/PostgreSQL/17",
     start_command: null,
+    stop_command: null,
+    auto_detected_from: null,
     expected_ports: [5432],
     observed_ports: [5432],
     status: "running",
@@ -50,6 +62,8 @@ function createMockSnapshot(): DashboardSnapshotDto {
     service_name: null,
     workdir: "C:/Program Files/Redis",
     start_command: "redis-server.exe",
+    stop_command: "redis-cli shutdown",
+    auto_detected_from: null,
     expected_ports: [6379],
     observed_ports: [6379],
     status: "running",
@@ -63,6 +77,8 @@ function createMockSnapshot(): DashboardSnapshotDto {
     service_name: "TermService",
     workdir: "C:/Windows/System32",
     start_command: null,
+    stop_command: null,
+    auto_detected_from: null,
     expected_ports: [3389],
     observed_ports: [3389],
     status: "running",
@@ -76,6 +92,8 @@ function createMockSnapshot(): DashboardSnapshotDto {
     service_name: null,
     workdir: "C:/Program Files/MySQL/MySQL Server 8.0/bin",
     start_command: "mysqld.exe --console",
+    stop_command: "mysqladmin shutdown",
+    auto_detected_from: null,
     expected_ports: [3306],
     observed_ports: [],
     status: "stopped",
@@ -89,6 +107,8 @@ function createMockSnapshot(): DashboardSnapshotDto {
     service_name: null,
     workdir: "D:/Code/backend",
     start_command: "dotnet MyApp.dll",
+    stop_command: "taskkill /IM dotnet.exe /F",
+    auto_detected_from: "package.json",
     expected_ports: [8080],
     observed_ports: [],
     status: "stopped",
@@ -298,6 +318,8 @@ export async function saveManagedService(draft: ManagedServiceDraftDto): Promise
     service_name: draft.service_name,
     workdir: draft.workdir,
     start_command: draft.start_command,
+    stop_command: draft.stop_command,
+    auto_detected_from: draft.auto_detected_from,
     expected_ports: [...draft.expected_ports],
     observed_ports: [],
     status: "stopped",
@@ -370,6 +392,33 @@ export async function stopManagedService(serviceId: string): Promise<void> {
     }
   }
   service.observed_ports = [];
+}
+
+export async function getProcessDetail(pid: number, processName: string | null): Promise<ProcessDetailDto> {
+  return {
+    pid,
+    process_name: processName,
+    executable_path: processName ? `C:/Mock/${processName}` : null,
+    started_at: new Date().toISOString(),
+    working_set_bytes: 64 * 1024 * 1024,
+    private_bytes: 96 * 1024 * 1024,
+    vendor: "Mock Vendor",
+    file_version: "1.0.0",
+    digital_signature: "有效",
+  };
+}
+
+export async function detectProjectServices(root: string): Promise<DetectedServiceCandidateDto[]> {
+  const segments = root.split(/[\\/]/).filter(Boolean);
+  return [
+    {
+      name: segments.length ? segments[segments.length - 1] : "project",
+      start_command: "npm run dev",
+      workdir: root,
+      expected_ports: [3000, 5173],
+      detected_from: "package.json",
+    },
+  ];
 }
 
 export function isMockRuntime(): boolean {

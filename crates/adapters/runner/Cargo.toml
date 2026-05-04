@@ -10,5 +10,6 @@ pm-domain = { path = "../../domain" }
 pm-ports = { path = "../../ports" }
 regex.workspace = true
 serde_json.workspace = true
+sysinfo.workspace = true
 tempfile.workspace = true
 tokio.workspace = true

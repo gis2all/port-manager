@@ -6,4 +6,5 @@ edition = "2024"
 [dependencies]
 anyhow.workspace = true
 async-trait.workspace = true
+chrono.workspace = true
 pm-domain = { path = "../domain" }

@@ -1,5 +1,7 @@
 use crate::state::AppState;
-use pm_application::{DashboardSnapshotDto, ManagedServiceDraftDto};
+use pm_application::{
+    DashboardSnapshotDto, DetectedServiceCandidateDto, ManagedServiceDraftDto, ProcessDetailDto,
+};
 use pm_domain::FavoriteTarget;
 use tauri::State;
 use uuid::Uuid;
@@ -72,6 +74,29 @@ pub async fn stop_managed_service(state: State<'_, AppState>, service_id: Uuid) 
     state
         .service()
         .stop_managed_service(service_id)
+        .await
+        .map_err(|error| error.to_string())
+}
+
+pub async fn get_process_detail(
+    state: State<'_, AppState>,
+    pid: u32,
+    process_name: Option<String>,
+) -> Result<ProcessDetailDto, String> {
+    state
+        .service()
+        .get_port_process_detail(pid, process_name)
+        .await
+        .map_err(|error| error.to_string())
+}
+
+pub async fn detect_project_services(
+    state: State<'_, AppState>,
+    root: String,
+) -> Result<Vec<DetectedServiceCandidateDto>, String> {
+    state
+        .service()
+        .detect_project_services(&root)
         .await
         .map_err(|error| error.to_string())
 }

@@ -1,6 +1,8 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use pm_application::{DashboardSnapshotDto, ManagedServiceDraftDto};
+use pm_application::{
+    DashboardSnapshotDto, DetectedServiceCandidateDto, ManagedServiceDraftDto, ProcessDetailDto,
+};
 use pm_tauri_api as api;
 use pm_tauri_api::AppState;
 use tauri::{Manager, State};
@@ -54,10 +56,28 @@ async fn stop_managed_service(state: State<'_, AppState>, service_id: Uuid) -> R
     api::stop_managed_service(state, service_id).await
 }
 
+#[tauri::command]
+async fn get_process_detail(
+    state: State<'_, AppState>,
+    pid: u32,
+    process_name: Option<String>,
+) -> Result<ProcessDetailDto, String> {
+    api::get_process_detail(state, pid, process_name).await
+}
+
+#[tauri::command]
+async fn detect_project_services(
+    state: State<'_, AppState>,
+    root: String,
+) -> Result<Vec<DetectedServiceCandidateDto>, String> {
+    api::detect_project_services(state, root).await
+}
+
 fn main() {
     let app_state = AppState::new().expect("failed to initialize app state");
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
         .manage(app_state)
         .setup(|app| {
             if let Some(window) = app.get_webview_window("main") {
@@ -77,6 +97,8 @@ fn main() {
             delete_managed_service,
             start_managed_service,
             stop_managed_service,
+            get_process_detail,
+            detect_project_services,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

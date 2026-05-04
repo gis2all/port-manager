@@ -11,4 +11,5 @@ tauri-build = { version = "2", features = [] }
 pm-application = { path = "../../../crates/application" }
 pm-tauri-api = { path = "../../../crates/interfaces/tauri_api" }
 tauri.workspace = true
+tauri-plugin-dialog = "2"
 uuid.workspace = true

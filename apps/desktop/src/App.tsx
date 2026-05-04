@@ -6,14 +6,15 @@ import { StatusPill } from "./components/StatusPill";
 import { FavoritesPage } from "./features/favorites/FavoritesPage";
 import { PortsPage } from "./features/ports/PortsPage";
 import { ServicesPage } from "./features/services/ServicesPage";
-import { deleteManagedService, getDashboardSnapshot, killProcessByPort, saveManagedService, startManagedService, stopManagedService, togglePortFavorite, toggleServiceFavorite } from "./lib/api";
+import { deleteManagedService, detectProjectServices, getDashboardSnapshot, getProcessDetail, killProcessByPort, saveManagedService, startManagedService, stopManagedService, togglePortFavorite, toggleServiceFavorite } from "./lib/api";
 import { countFavorites, countListeningPorts, countRunningServices, findPortByRowKey, findService, getPortRowKey } from "./lib/dashboard";
 import { isMockRuntime } from "./lib/mockBackend";
 import { formatOptionalText, formatPortList, formatPortStatusLabel, formatProtocolLabel, formatServiceKindLabel, formatServiceStatusLabel, portStatusTone, serviceStatusTone } from "./lib/presentation";
-import type { ActivityEntry, ActivityTone, DashboardSnapshotDto, ManagedServiceDraftDto, ManagedServiceDto, PortDto } from "./lib/types";
+import type { ActivityEntry, ActivityTone, DashboardSnapshotDto, ManagedServiceDraftDto, ManagedServiceDto, PortDto, ProcessDetailDto } from "./lib/types";
 import appIcon from "../public/brand-icon.svg";
 
 const DASHBOARD_QUERY_KEY = ["dashboard"];
+const PROCESS_DETAIL_QUERY_KEY = ["process-detail"];
 
 type TabKey = "ports" | "services" | "favorites";
 
@@ -62,6 +63,12 @@ export function App() {
       ? findService(snapshot, portRecord.matched_service_id) ?? snapshot.services.find((service) => service.expected_ports.includes(portRecord.port)) ?? null
       : snapshot.services.find((service) => service.expected_ports.includes(portRecord.port)) ?? null
     : null;
+  const processDetail = useQuery({
+    queryKey: [...PROCESS_DETAIL_QUERY_KEY, portRecord?.pid ?? null, portRecord?.process_name ?? null],
+    queryFn: () => getProcessDetail(portRecord?.pid ?? 0, portRecord?.process_name ?? null),
+    enabled: portRecord?.pid !== null && portRecord?.pid !== undefined,
+    staleTime: 2000,
+  });
 
   useEffect(() => {
     if (!snapshot.ports.length) {
@@ -294,6 +301,10 @@ export function App() {
     }
   };
 
+  const handleDetectProject = async (root: string) => {
+    return detectProjectServices(root);
+  };
+
   const clearActivity = () => {
     setActivity([]);
   };
@@ -354,6 +365,7 @@ export function App() {
                   onStopService={handleStopService}
                   onDeleteService={handleDeleteService}
                   onSaveService={handleSaveService}
+                  onDetectProject={handleDetectProject}
                   isRefreshing={dashboard.isFetching}
                   lastScanLabel={lastScanLabel}
                 />
@@ -382,6 +394,7 @@ export function App() {
                   port={portRecord}
                   matchedService={portServiceRecord}
                   scanTimestampLabel={scanTimestampLabel}
+                  processDetail={processDetail.data ?? null}
                   onClose={handleClearPortSelection}
                   onKillPort={handleKillPort}
                   onToggleFavorite={handleTogglePortFavorite}
@@ -488,6 +501,7 @@ interface PortDetailProps {
   port: PortDto | null;
   matchedService: ManagedServiceDto | null;
   scanTimestampLabel: string;
+  processDetail: ProcessDetailDto | null;
   onClose: () => void;
   onKillPort: (port: number) => void;
   onToggleFavorite: (port: PortDto) => void;
@@ -500,6 +514,7 @@ function PortDetail({
   port,
   matchedService,
   scanTimestampLabel,
+  processDetail,
   onClose,
   onKillPort,
   onToggleFavorite,
@@ -515,8 +530,6 @@ function PortDetail({
       </div>
     );
   }
-
-  const meta = buildPortMeta(port, matchedService, scanTimestampLabel);
 
   return (
     <div className="detail-stack">
@@ -541,24 +554,23 @@ function PortDetail({
           <DetailField label="PID:" value={port.pid === null ? "未检测" : port.pid.toLocaleString("zh-CN")} />
           <DetailField label={"协议"} value={formatProtocolLabel(port.protocol)} />
           <DetailField label={"监听地址"} value={<span className="mono">{port.listen_address}</span>} />
-          <DetailField label={"创建时间"} value={meta.created} />
-          <DetailField label={"运行用户"} value={meta.user} />
+          <DetailField label={"扫描时间"} value={scanTimestampLabel} />
         </div>
       </section>
 
       <section className="detail-section">
         <h3>{"进程信息"}</h3>
         <div className="detail-details-list">
-          <DetailField label={"可执行路径"} value={<span className="mono">{meta.filePath}</span>} />
-          <DetailField label={"厂商"} value={meta.company} />
-          <DetailField label={"文件版本"} value={meta.fileVersion} />
-          <DetailField label={"描述"} value={meta.description} />
+          <DetailField label={"可执行路径"} value={<span className="mono">{formatOptionalText(processDetail?.executable_path, "未采集")}</span>} />
+          <DetailField label={"厂商"} value={formatOptionalText(processDetail?.vendor, "未采集")} />
+          <DetailField label={"文件版本"} value={formatOptionalText(processDetail?.file_version, "未采集")} />
           <DetailField
             label={"数字签名"}
-            value={<StatusPill label={meta.digitalSignature} tone={meta.digitalSignature === ("有效") ? "success" : "neutral"} />}
+            value={<StatusPill label={formatOptionalText(processDetail?.digital_signature, "未采集")} tone={processDetail?.digital_signature === ("有效") ? "success" : "neutral"} />}
           />
-          <DetailField label={"启动时间"} value={meta.startTime} />
-          <DetailField label={"工作集"} value={meta.workingSet} />
+          <DetailField label={"启动时间"} value={processDetail?.started_at ? formatDetailedTimestamp(new Date(processDetail.started_at)) : "未采集"} />
+          <DetailField label={"工作集"} value={formatBytes(processDetail?.working_set_bytes)} />
+          <DetailField label={"私有内存"} value={formatBytes(processDetail?.private_bytes)} />
         </div>
       </section>
 
@@ -742,94 +754,6 @@ function FavoritesDetail({ snapshot }: { snapshot: DashboardSnapshotDto }) {
   );
 }
 
-function buildPortMeta(port: PortDto, service: ManagedServiceDto | null, scanTimestampLabel: string) {
-  const processName = port.process_name?.toLowerCase() ?? "";
-  const createdAt = scanTimestampLabel;
-  const signatureLabel = "有效";
-
-  if (processName.includes("httpd")) {
-    return {
-      created: createdAt,
-      user: "NT AUTHORITY\\SYSTEM",
-      filePath: "C:\\Apache24\\bin\\httpd.exe",
-      company: "Apache Software Foundation",
-      fileVersion: "2.4.59.0",
-      description: "Apache HTTP Server",
-      digitalSignature: signatureLabel,
-      startTime: createdAt,
-      workingSet: "28.4 MB",
-    };
-  }
-
-  if (processName.includes("svchost")) {
-    return {
-      created: createdAt,
-      user: "LOCAL SERVICE",
-      filePath: "C:\\Windows\\System32\\svchost.exe",
-      company: "Microsoft Corporation",
-      fileVersion: "10.0.22631.1",
-      description: "Host Process for Windows Services",
-      digitalSignature: signatureLabel,
-      startTime: createdAt,
-      workingSet: "12.1 MB",
-    };
-  }
-
-  if (processName.includes("postgres")) {
-    return {
-      created: createdAt,
-      user: "postgres",
-      filePath: "C:\\Program Files\\PostgreSQL\\17\\bin\\postgres.exe",
-      company: "PostgreSQL Global Development Group",
-      fileVersion: "17.2",
-      description: "PostgreSQL Server",
-      digitalSignature: signatureLabel,
-      startTime: createdAt,
-      workingSet: "96.3 MB",
-    };
-  }
-
-  if (processName.includes("redis")) {
-    return {
-      created: createdAt,
-      user: "redis",
-      filePath: "C:\\Program Files\\Redis\\redis-server.exe",
-      company: "Redis Ltd",
-      fileVersion: "7.2.5",
-      description: "Redis Server",
-      digitalSignature: signatureLabel,
-      startTime: createdAt,
-      workingSet: "18.9 MB",
-    };
-  }
-
-  if (processName.includes("mysqld")) {
-    return {
-      created: createdAt,
-      user: "mysql",
-      filePath: "C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin\\mysqld.exe",
-      company: "Oracle Corporation",
-      fileVersion: "8.0.36",
-      description: "MySQL Server",
-      digitalSignature: signatureLabel,
-      startTime: createdAt,
-      workingSet: "84.2 MB",
-    };
-  }
-
-  return {
-    created: createdAt,
-    user: service?.kind === "windows_service" ? service.service_name ?? ("系统") : "当前用户",
-    filePath: `C:\\Program Files\\${service?.name ?? "App"}\\${port.process_name ?? "service"}.exe`,
-    company: service?.name ?? ("本地应用"),
-    fileVersion: "1.0.0",
-    description: service?.name ?? ("本地进程"),
-    digitalSignature: port.pid ? signatureLabel : "未知",
-    startTime: createdAt,
-    workingSet: "24.0 MB",
-  };
-}
-
 function formatClockLabel(date: Date) {
   return date.toLocaleTimeString("zh-CN", {
     hour: "2-digit",
@@ -849,6 +773,15 @@ function formatDetailedTimestamp(date: Date) {
     second: "2-digit",
     hour12: false,
   });
+}
+
+function formatBytes(value: number | null | undefined) {
+  if (value === null || value === undefined) {
+    return "未采集";
+  }
+
+  const mb = value / (1024 * 1024);
+  return `${mb.toFixed(1)} MB`;
 }
 
 type ActivitySeed = Omit<ActivityEntry, "id" | "at">;

@@ -6,10 +6,12 @@ edition = "2024"
 [dependencies]
 anyhow.workspace = true
 async-trait.workspace = true
+chrono.workspace = true
 netstat2.workspace = true
 pm-domain = { path = "../../domain" }
 pm-ports = { path = "../../ports" }
 sysinfo.workspace = true
 
 [target.'cfg(windows)'.dependencies]
+windows = { version = "0.62.2", features = ["Win32_Foundation", "Win32_Security_Cryptography", "Win32_Security_WinTrust", "Win32_Storage_FileSystem", "Win32_System_Diagnostics_Debug"] }
 windows-service = "0.7"

@@ -4,8 +4,8 @@ use pm_application::PortManagerService;
 use pm_domain::{Favorite, FavoriteTarget, ManagedService, PortProtocol, PortRecord, PortStatus};
 use support::{
     InMemoryFavoriteRepository, InMemoryManagedServiceRepository, InMemoryRunStateRepository,
-    RecordingCommandRunner, RecordingProcessController, RecordingServiceController,
-    StaticPortProvider,
+    RecordingCommandRunner, RecordingProcessController, RecordingProjectDetector,
+    RecordingServiceController, StaticPortProvider,
 };
 
 fn port_row_key(
@@ -60,6 +60,7 @@ async fn dashboard_snapshot_marks_favorites_and_service_matches() {
         RecordingProcessController::default(),
         RecordingServiceController::default(),
         RecordingCommandRunner::default(),
+        RecordingProjectDetector::default(),
         InMemoryFavoriteRepository::new(favorites),
         InMemoryManagedServiceRepository::new(vec![service]),
         InMemoryRunStateRepository::default(),
@@ -95,6 +96,7 @@ async fn dashboard_snapshot_prefers_explicit_service_match_before_port_guessing(
         RecordingProcessController::default(),
         RecordingServiceController::default(),
         RecordingCommandRunner::default(),
+        RecordingProjectDetector::default(),
         InMemoryFavoriteRepository::new(vec![]),
         InMemoryManagedServiceRepository::new(vec![explicit_service.clone(), guessed_service]),
         InMemoryRunStateRepository::default(),
@@ -124,6 +126,7 @@ async fn dashboard_snapshot_falls_back_to_expected_port_matching() {
         RecordingProcessController::default(),
         RecordingServiceController::default(),
         RecordingCommandRunner::default(),
+        RecordingProjectDetector::default(),
         InMemoryFavoriteRepository::new(vec![]),
         InMemoryManagedServiceRepository::new(vec![ManagedService::command(
             "frontend",
@@ -173,6 +176,7 @@ async fn dashboard_snapshot_keeps_port_favorites_row_scoped_for_duplicate_ports(
         RecordingProcessController::default(),
         RecordingServiceController::default(),
         RecordingCommandRunner::default(),
+        RecordingProjectDetector::default(),
         InMemoryFavoriteRepository::new(vec![Favorite::new(FavoriteTarget::PortRow {
             key: row_key,
             port: 135,

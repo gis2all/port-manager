@@ -1,8 +1,15 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { DashboardSnapshotDto, ManagedServiceDraftDto } from "./types";
+import type {
+  DashboardSnapshotDto,
+  DetectedServiceCandidateDto,
+  ManagedServiceDraftDto,
+  ProcessDetailDto,
+} from "./types";
 import {
+  detectProjectServices as detectProjectServicesMock,
   deleteManagedService as deleteManagedServiceMock,
   getDashboardSnapshot as getDashboardSnapshotMock,
+  getProcessDetail as getProcessDetailMock,
   isMockRuntime,
   killProcessByPort as killProcessByPortMock,
   saveManagedService as saveManagedServiceMock,
@@ -42,6 +49,15 @@ async function call<T>(command: string, args?: Record<string, unknown>): Promise
       return (await startManagedServiceMock(String(getArg(args, "serviceId", "service_id")))) as T;
     case "stop_managed_service":
       return (await stopManagedServiceMock(String(getArg(args, "serviceId", "service_id")))) as T;
+    case "get_process_detail":
+      return (await getProcessDetailMock(
+        Number(args?.pid),
+        typeof getArg(args, "processName", "process_name") === "string"
+          ? String(getArg(args, "processName", "process_name"))
+          : null,
+      )) as T;
+    case "detect_project_services":
+      return (await detectProjectServicesMock(String(args?.root ?? ""))) as T;
     default:
       throw new Error(`Unknown command: ${command}`);
   }
@@ -77,4 +93,12 @@ export function startManagedService(serviceId: string): Promise<void> {
 
 export function stopManagedService(serviceId: string): Promise<void> {
   return call<void>("stop_managed_service", { serviceId });
+}
+
+export function getProcessDetail(pid: number, processName: string | null): Promise<ProcessDetailDto> {
+  return call<ProcessDetailDto>("get_process_detail", { pid, processName });
+}
+
+export function detectProjectServices(root: string): Promise<DetectedServiceCandidateDto[]> {
+  return call<DetectedServiceCandidateDto[]>("detect_project_services", { root });
 }

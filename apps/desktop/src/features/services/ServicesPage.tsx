@@ -1,10 +1,17 @@
-import { Play, Plus, Square, Star, Trash2, TriangleAlert, Zap, type LucideIcon } from "lucide-react";
+import { FolderSearch, Play, Plus, Square, Star, Trash2, TriangleAlert, Zap, type LucideIcon } from "lucide-react";
+import { open } from "@tauri-apps/plugin-dialog";
 import { useMemo, useState } from "react";
 import { ScanCard } from "../../components/ScanCard";
 import { SelectMenu, type SelectOption } from "../../components/SelectMenu";
 import { StatusPill } from "../../components/StatusPill";
 import { formatOptionalText, formatPortList, formatServiceKindLabel, formatServiceStatusLabel, serviceStatusTone } from "../../lib/presentation";
-import type { DashboardSnapshotDto, ManagedServiceDraftDto, ManagedServiceDto, ServiceKind } from "../../lib/types";
+import type {
+  DashboardSnapshotDto,
+  DetectedServiceCandidateDto,
+  ManagedServiceDraftDto,
+  ManagedServiceDto,
+  ServiceKind,
+} from "../../lib/types";
 
 interface ServicesPageProps {
   snapshot: DashboardSnapshotDto;
@@ -16,6 +23,7 @@ interface ServicesPageProps {
   onStopService: (serviceId: string) => void;
   onDeleteService: (serviceId: string) => void;
   onSaveService: (draft: ManagedServiceDraftDto) => void;
+  onDetectProject: (root: string) => Promise<DetectedServiceCandidateDto[]>;
   isRefreshing: boolean;
   lastScanLabel: string;
 }
@@ -26,6 +34,8 @@ interface ServiceFormState {
   serviceName: string;
   workdir: string;
   startCommand: string;
+  stopCommand: string;
+  autoDetectedFrom: string;
   expectedPortsText: string;
 }
 
@@ -50,6 +60,8 @@ function createEmptyServiceForm(): ServiceFormState {
     serviceName: "",
     workdir: "",
     startCommand: "",
+    stopCommand: "",
+    autoDetectedFrom: "",
     expectedPortsText: "3000",
   };
 }
@@ -64,11 +76,15 @@ export function ServicesPage({
   onStopService,
   onDeleteService,
   onSaveService,
+  onDetectProject,
   isRefreshing,
   lastScanLabel,
 }: ServicesPageProps) {
   const [form, setForm] = useState<ServiceFormState>(() => createEmptyServiceForm());
   const [error, setError] = useState<string | null>(null);
+  const [detectRoot, setDetectRoot] = useState("");
+  const [isDetecting, setIsDetecting] = useState(false);
+  const [detectedCandidates, setDetectedCandidates] = useState<DetectedServiceCandidateDto[]>([]);
 
   const runningCount = snapshot.services.filter((service) => service.status === "running").length;
   const attentionCount = snapshot.services.filter((service) => service.status !== "running").length;
@@ -311,6 +327,8 @@ export function ServicesPage({
                 service_name: form.kind === "windows_service" ? form.serviceName.trim() : null,
                 workdir: form.kind === "command" && form.workdir.trim() ? form.workdir.trim() : null,
                 start_command: form.kind === "command" && form.startCommand.trim() ? form.startCommand.trim() : null,
+                stop_command: form.kind === "command" && form.stopCommand.trim() ? form.stopCommand.trim() : null,
+                auto_detected_from: form.autoDetectedFrom.trim() ? form.autoDetectedFrom.trim() : null,
                 expected_ports: normalizedPorts,
               });
 
@@ -351,6 +369,15 @@ export function ServicesPage({
                     <span>工作目录</span>
                     <input value={form.workdir} onChange={(event) => setForm((current) => ({ ...current, workdir: event.target.value }))} placeholder="D:/Code/web" />
                   </label>
+
+                  <label className="field field-wide">
+                    <span>停止命令</span>
+                    <input
+                      value={form.stopCommand}
+                      onChange={(event) => setForm((current) => ({ ...current, stopCommand: event.target.value }))}
+                      placeholder="npm run stop"
+                    />
+                  </label>
                 </>
               ) : (
                 <label className="field field-wide">
@@ -371,9 +398,100 @@ export function ServicesPage({
                   placeholder="3000, 5173"
                 />
               </label>
+
+              <label className="field field-wide">
+                <span>检测来源</span>
+                <input
+                  value={form.autoDetectedFrom}
+                  onChange={(event) => setForm((current) => ({ ...current, autoDetectedFrom: event.target.value }))}
+                  placeholder="package.json / docker-compose.yml / pom.xml"
+                />
+              </label>
             </div>
 
             {error ? <div className="form-error">{error}</div> : null}
+
+            <div className="service-detect-block">
+              <div className="service-detect-row">
+                <input
+                  value={detectRoot}
+                  onChange={(event) => setDetectRoot(event.target.value)}
+                  placeholder="输入项目目录，例如 D:/Code/web"
+                />
+                <button
+                  type="button"
+                  className="ghost-button"
+                  onClick={async () => {
+                    if (typeof window === "undefined") {
+                      return;
+                    }
+                    const selected = await open({
+                      directory: true,
+                      multiple: false,
+                    });
+                    if (typeof selected === "string") {
+                      setDetectRoot(selected);
+                    }
+                  }}
+                >
+                  浏览目录
+                </button>
+                <button
+                  type="button"
+                  className="ghost-button"
+                  disabled={!detectRoot.trim() || isDetecting}
+                  onClick={async () => {
+                    try {
+                      setIsDetecting(true);
+                      setError(null);
+                      const candidates = await onDetectProject(detectRoot.trim());
+                      setDetectedCandidates(candidates);
+                    } catch (detectError) {
+                      setError(detectError instanceof Error ? detectError.message : String(detectError));
+                    } finally {
+                      setIsDetecting(false);
+                    }
+                  }}
+                >
+                  <FolderSearch size={16} />
+                  {isDetecting ? "识别中" : "从项目识别"}
+                </button>
+              </div>
+
+              {detectedCandidates.length ? (
+                <div className="service-detect-list">
+                  {detectedCandidates.map((candidate, index) => (
+                    <button
+                      key={`${candidate.name}-${candidate.detected_from}-${index}`}
+                      type="button"
+                      className="service-detect-item"
+                      onClick={() => {
+                        setForm({
+                          name: candidate.name,
+                          kind: "command",
+                          serviceName: "",
+                          workdir: candidate.workdir,
+                          startCommand: candidate.start_command,
+                          stopCommand: "",
+                          autoDetectedFrom: candidate.detected_from,
+                          expectedPortsText: candidate.expected_ports.join(", "),
+                        });
+                        setError(null);
+                      }}
+                    >
+                      <div className="service-detect-copy">
+                        <strong>{candidate.name}</strong>
+                        <span>{candidate.start_command}</span>
+                      </div>
+                      <div className="service-detect-meta">
+                        <span>{candidate.detected_from}</span>
+                        <span>{formatPortList(candidate.expected_ports, "未识别端口")}</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+            </div>
 
             <div className="form-footer">
               <button type="submit" className="primary-button">

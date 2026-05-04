@@ -4,8 +4,8 @@ use pm_application::PortManagerService;
 use pm_domain::{PortProtocol, PortRecord, PortStatus};
 use support::{
     InMemoryFavoriteRepository, InMemoryManagedServiceRepository, InMemoryRunStateRepository,
-    RecordingCommandRunner, RecordingProcessController, RecordingServiceController,
-    StaticPortProvider,
+    RecordingCommandRunner, RecordingProcessController, RecordingProjectDetector,
+    RecordingServiceController, StaticPortProvider,
 };
 
 #[tokio::test]
@@ -26,6 +26,7 @@ async fn kill_process_by_port_calls_process_controller() {
         controller.clone(),
         RecordingServiceController::default(),
         RecordingCommandRunner::default(),
+        RecordingProjectDetector::default(),
         InMemoryFavoriteRepository::new(vec![]),
         InMemoryManagedServiceRepository::new(vec![]),
         InMemoryRunStateRepository::default(),

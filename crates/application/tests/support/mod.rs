@@ -1,10 +1,13 @@
 use async_trait::async_trait;
+use chrono::{DateTime, Utc};
 use pm_domain::{
     Favorite, FavoriteTarget, ManagedService, ManagedServiceId, ManagedServiceRun, PortRecord,
 };
 use pm_ports::{
-    CommandRunHandle, CommandRunner, FavoriteRepository, ManagedServiceRepository, PortProvider,
-    ProcessController, RunStateRepository, ServiceController, ServiceStatus, StartCommandRequest,
+    CommandRunHandle, CommandRunner, CommandStopResult, DetectedServiceCandidate,
+    FavoriteRepository, ManagedServiceRepository, PortProvider, ProcessController, ProcessDetails,
+    ProjectDetector, RunStateRepository, ServiceController, ServiceStatus, StartCommandRequest,
+    StopCommandRequest,
 };
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -23,6 +26,8 @@ impl PortProvider for StaticPortProvider {
 #[derive(Default, Clone)]
 pub struct RecordingProcessController {
     pub killed_pids: Arc<Mutex<Vec<u32>>>,
+    pub running_pids: Arc<Mutex<HashMap<u32, bool>>>,
+    pub process_details: Arc<Mutex<HashMap<u32, ProcessDetails>>>,
 }
 
 #[async_trait]
@@ -30,6 +35,24 @@ impl ProcessController for RecordingProcessController {
     async fn kill_pid(&self, pid: u32) -> anyhow::Result<()> {
         self.killed_pids.lock().expect("killed pids").push(pid);
         Ok(())
+    }
+
+    async fn is_pid_running(&self, pid: u32) -> anyhow::Result<bool> {
+        Ok(*self
+            .running_pids
+            .lock()
+            .expect("running pids")
+            .get(&pid)
+            .unwrap_or(&false))
+    }
+
+    async fn get_process_details(&self, pid: u32) -> anyhow::Result<Option<ProcessDetails>> {
+        Ok(self
+            .process_details
+            .lock()
+            .expect("process details")
+            .get(&pid)
+            .cloned())
     }
 }
 
@@ -83,8 +106,9 @@ impl ServiceController for RecordingServiceController {
 #[derive(Default, Clone)]
 pub struct RecordingCommandRunner {
     pub started_commands: Arc<Mutex<Vec<StartCommandRequest>>>,
-    pub stopped_root_pids: Arc<Mutex<Vec<u32>>>,
+    pub stop_requests: Arc<Mutex<Vec<StopCommandRequest>>>,
     pub next_pid: Arc<Mutex<u32>>,
+    pub next_stop_result: Arc<Mutex<Option<CommandStopResult>>>,
 }
 
 #[async_trait]
@@ -109,12 +133,49 @@ impl CommandRunner for RecordingCommandRunner {
         })
     }
 
-    async fn stop(&self, root_pid: u32) -> anyhow::Result<()> {
-        self.stopped_root_pids
+    async fn stop(&self, request: StopCommandRequest) -> anyhow::Result<CommandStopResult> {
+        self.stop_requests.lock().expect("stop requests").push(request);
+        Ok(self
+            .next_stop_result
             .lock()
-            .expect("stopped root pids")
-            .push(root_pid);
-        Ok(())
+            .expect("next stop result")
+            .clone()
+            .unwrap_or(CommandStopResult {
+                child_pids: vec![],
+                last_exit_code: Some(0),
+            }))
+    }
+}
+
+#[derive(Default, Clone)]
+pub struct RecordingProjectDetector {
+    pub candidates: Arc<Mutex<HashMap<String, Vec<DetectedServiceCandidate>>>>,
+}
+
+impl RecordingProjectDetector {
+    #[allow(dead_code)]
+    pub fn set_candidates(
+        &self,
+        root: impl Into<String>,
+        candidates: Vec<DetectedServiceCandidate>,
+    ) {
+        self.candidates
+            .lock()
+            .expect("candidates")
+            .insert(root.into(), candidates);
+    }
+}
+
+#[async_trait]
+impl ProjectDetector for RecordingProjectDetector {
+    async fn detect(&self, root: &str) -> anyhow::Result<Vec<DetectedServiceCandidate>> {
+        Ok(self
+            .candidates
+            .lock()
+            .expect("candidates")
+            .get(root)
+            .cloned()
+            .unwrap_or_default())
     }
 }
 
@@ -226,5 +287,28 @@ impl RunStateRepository for InMemoryRunStateRepository {
             .expect("runs")
             .insert(run.service_id, run);
         Ok(())
+    }
+}
+
+#[allow(dead_code)]
+pub fn process_details(
+    pid: u32,
+    executable_path: Option<&str>,
+    started_at: Option<DateTime<Utc>>,
+    working_set_bytes: Option<u64>,
+    private_bytes: Option<u64>,
+    vendor: Option<&str>,
+    file_version: Option<&str>,
+    digital_signature: Option<&str>,
+) -> ProcessDetails {
+    ProcessDetails {
+        pid,
+        executable_path: executable_path.map(ToOwned::to_owned),
+        started_at,
+        working_set_bytes,
+        private_bytes,
+        vendor: vendor.map(ToOwned::to_owned),
+        file_version: file_version.map(ToOwned::to_owned),
+        digital_signature: digital_signature.map(ToOwned::to_owned),
     }
 }

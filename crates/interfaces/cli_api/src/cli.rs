@@ -14,6 +14,11 @@ pub enum Commands {
         #[arg(short, long, value_enum, default_value_t = OutputFormat::Json)]
         format: OutputFormat,
     },
+    Detect {
+        path: String,
+        #[arg(short, long, value_enum, default_value_t = OutputFormat::Table)]
+        format: OutputFormat,
+    },
     KillPort {
         port: u16,
     },

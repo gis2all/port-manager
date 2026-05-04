@@ -1,6 +1,7 @@
 use crate::cli::{Cli, Commands, FavoriteAction, OutputFormat};
 use anyhow::Result;
 use pm_adapters_runner::LocalCommandRunner;
+use pm_adapters_runner::ProjectFileDetector;
 use pm_adapters_sqlite::SqliteStore;
 use pm_adapters_windows::{
     WindowsPortProvider, WindowsProcessController, WindowsServiceController,
@@ -16,6 +17,7 @@ fn build_service() -> Result<
         WindowsProcessController,
         WindowsServiceController,
         LocalCommandRunner,
+        ProjectFileDetector,
         SqliteStore,
         SqliteStore,
         SqliteStore,
@@ -27,6 +29,7 @@ fn build_service() -> Result<
         WindowsProcessController,
         WindowsServiceController,
         LocalCommandRunner,
+        ProjectFileDetector,
         store.clone(),
         store.clone(),
         store,
@@ -42,6 +45,13 @@ pub async fn run(cli: Cli) -> Result<String> {
             match format {
                 OutputFormat::Json => Ok(serde_json::to_string_pretty(&snapshot.ports)?),
                 OutputFormat::Table => Ok(render_port_table(&snapshot.ports)),
+            }
+        }
+        Commands::Detect { path, format } => {
+            let candidates = app.detect_project_services(&path).await?;
+            match format {
+                OutputFormat::Json => Ok(serde_json::to_string_pretty(&candidates)?),
+                OutputFormat::Table => Ok(render_detect_table(&candidates)),
             }
         }
         Commands::KillPort { port } => {
@@ -72,6 +82,31 @@ fn render_port_table(ports: &[pm_application::PortDto]) -> String {
             port.pid.map(|pid| pid.to_string()).unwrap_or_else(|| "-".into()),
             port.status,
             port.listen_address
+        ));
+    }
+    lines.join("\n")
+}
+
+fn render_detect_table(candidates: &[pm_application::DetectedServiceCandidateDto]) -> String {
+    let mut lines =
+        vec!["NAME                 START COMMAND           PORTS           DETECTED FROM".to_string()];
+    for candidate in candidates {
+        let ports = if candidate.expected_ports.is_empty() {
+            "-".to_owned()
+        } else {
+            candidate
+                .expected_ports
+                .iter()
+                .map(u16::to_string)
+                .collect::<Vec<_>>()
+                .join(",")
+        };
+        lines.push(format!(
+            "{:<20} {:<23} {:<15} {}",
+            candidate.name,
+            candidate.start_command,
+            ports,
+            candidate.detected_from
         ));
     }
     lines.join("\n")

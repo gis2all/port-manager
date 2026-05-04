@@ -64,6 +64,24 @@ impl ManagedService {
         )
     }
 
+    pub fn command_with_stop(
+        name: impl Into<String>,
+        start_command: impl Into<String>,
+        stop_command: Option<String>,
+        workdir: Option<String>,
+        expected_ports: Vec<u16>,
+    ) -> Self {
+        Self::new(
+            name,
+            ServiceKind::Command,
+            None,
+            workdir,
+            Some(start_command.into()),
+            stop_command,
+            expected_ports,
+        )
+    }
+
     pub fn windows_service(
         name: impl Into<String>,
         service_name: impl Into<String>,
@@ -122,5 +140,10 @@ impl ManagedService {
 
     pub fn auto_detected_from(&self) -> Option<&str> {
         self.auto_detected_from.as_deref()
+    }
+
+    pub fn with_auto_detected_from(mut self, detected_from: Option<String>) -> Self {
+        self.auto_detected_from = detected_from;
+        self
     }
 }

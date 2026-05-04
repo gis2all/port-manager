@@ -22,6 +22,8 @@ export interface ManagedServiceDto {
   service_name: string | null;
   workdir: string | null;
   start_command: string | null;
+  stop_command: string | null;
+  auto_detected_from: string | null;
   expected_ports: number[];
   observed_ports: number[];
   status: ServiceStatus;
@@ -39,7 +41,29 @@ export interface ManagedServiceDraftDto {
   service_name: string | null;
   workdir: string | null;
   start_command: string | null;
+  stop_command: string | null;
+  auto_detected_from: string | null;
   expected_ports: number[];
+}
+
+export interface ProcessDetailDto {
+  pid: number;
+  process_name: string | null;
+  executable_path: string | null;
+  started_at: string | null;
+  working_set_bytes: number | null;
+  private_bytes: number | null;
+  vendor: string | null;
+  file_version: string | null;
+  digital_signature: string | null;
+}
+
+export interface DetectedServiceCandidateDto {
+  name: string;
+  start_command: string;
+  workdir: string;
+  expected_ports: number[];
+  detected_from: string;
 }
 
 export type ActivityTone = "neutral" | "success" | "warning" | "danger" | "accent";

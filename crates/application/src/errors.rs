@@ -20,6 +20,9 @@ pub enum ApplicationError {
     #[error("managed service {0} is not currently running")]
     ManagedServiceNotRunning(String),
 
+    #[error("managed service {0} requires a running process id")]
+    ManagedServiceRunPidMissing(String),
+
     #[error("invalid managed service kind: {0}")]
     InvalidManagedServiceKind(String),
 
@@ -28,4 +31,10 @@ pub enum ApplicationError {
 
     #[error("failed to control command: {0}")]
     CommandControlFailed(String),
+
+    #[error("process {0} is not available")]
+    ProcessMissing(u32),
+
+    #[error("project path {0} is invalid or unavailable")]
+    InvalidProjectPath(String),
 }
